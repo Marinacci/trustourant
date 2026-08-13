@@ -1,0 +1,26 @@
+{
+  "name": "trustourant",
+  "version": "1.0.0",
+  "description": "TrustOurant - Platform di recensioni per il personale dell'ospitalità italiana",
+  "main": "trustourant-backend.js",
+  "scripts": {
+    "start": "node trustourant-backend.js",
+    "dev": "node trustourant-backend.js"
+  },
+  "keywords": [
+    "reviews",
+    "hospitality",
+    "employees",
+    "rating"
+  ],
+  "author": "Fulvio Marinacci",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.0",
+    "sqlite3": "^5.1.6",
+    "nodemailer": "^6.9.7"
+  }
+}

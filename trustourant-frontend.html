@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustOurant - Fase 3 con Verificazioni e Statistiche</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #1f2937;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    header {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 15px 0;
+      margin-bottom: 30px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    nav {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    nav button {
+      padding: 8px 16px;
+      background: #ec4899;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: background 0.3s;
+    }
+
+    nav button:hover {
+      background: #be185d;
+    }
+
+    nav button.active {
+      background: #1f2937;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #1f2937;
+      font-weight: 600;
+    }
+
+    .badge-verificato {
+      background: #10b981;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Sections */
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    /* Auth */
+    .auth-container {
+      max-width: 500px;
+      margin: 80px auto;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .auth-container h1 {
+      color: #1f2937;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 16px;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #ec4899;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: #ec4899;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+
+    .submit-btn:hover {
+      background: #be185d;
+    }
+
+    /* Dashboard */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-left: 4px solid #ec4899;
+    }
+
+    .stat-label {
+      color: #9ca3af;
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .stat-subtext {
+      color: #6b7280;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    /* Grafici */
+    .chart-container {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      position: relative;
+      height: 400px;
+    }
+
+    .chart-container h3 {
+      color: #1f2937;
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+
+    /* Verificazione Form */
+    .verificazione-section {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    .verificazione-section h2 {
+      color: #1f2937;
+      margin-bottom: 20px;
+    }
+
+    .verificazione-status {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #fbbf24;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .status-badge.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-badge.approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    /* Ricerca */
+    .search-section {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .search-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .search-grid input, .search-grid select {
+      padding: 10px;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .search-btn {
+      padding: 10px 30px;
+      background: #ec4899;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* Risultati */
+    .strutture-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .struttura-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+    }
+
+    .struttura-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .struttura-card h3 {
+      color: #1f2937;
+      margin-bottom: 10px;
+    }
+
+    .struttura-info {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .rating {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .stars {
+      color: #f59e0b;
+      font-size: 18px;
+    }
+
+    .rating-value {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    /* Alert */
+    .alert {
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .alert.show {
+      display: block;
+    }
+
+    .alert.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    .alert.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .alert.warning {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+
+    /* Review Form */
+    .review-form {
+      background: #f9fafb;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      border: 2px solid #e5e7eb;
+    }
+
+    .review-form h3 {
+      color: #1f2937;
+      margin-bottom: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      color: #6b7280;
+      cursor: pointer;
+      font-weight: 600;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .tab-btn.active {
+      color: #ec4899;
+      border-bottom-color: #ec4899;
+    }
+
+    @media (max-width: 768px) {
+      .search-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .strutture-grid {
+        grid-template-columns: 1fr;
+      }
+
+      header .container {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      nav {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo">🍽️ TrustOurant Fase 3</div>
+      <nav id="mainNav">
+        <button class="nav-btn active" data-tab="ricerca">Ricerca</button>
+        <button class="nav-btn" data-tab="statistiche">Statistiche</button>
+        <button class="nav-btn" data-tab="verificazione">Verificazione</button>
+        <button class="nav-btn" data-tab="mie-review">Le Mie Review</button>
+      </nav>
+      <div id="userNav" class="user-info" style="display: none;">
+        <span id="userName"></span>
+        <span id="badgeVerificato" class="badge-verificato" style="display: none;">✓ Verificato</span>
+        <button id="logoutBtn">Logout</button>
+      </div>
+      <nav id="authNav">
+        <button class="nav-btn">Login</button>
+        <button class="nav-btn">Registrati</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Login -->
+    <div id="loginSection" class="section active">
+      <div class="auth-container">
+        <h1>Accedi</h1>
+        <div id="loginAlert" class="alert"></div>
+        <form id="loginForm">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="loginEmail" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" required>
+          </div>
+          <button type="submit" class="submit-btn">Accedi</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Registrazione -->
+    <div id="registerSection" class="section">
+      <div class="auth-container">
+        <h1>Crea Account</h1>
+        <div id="registerAlert" class="alert"></div>
+        <form id="registerForm">
+          <div class="form-group">
+            <label>Nome Completo</label>
+            <input type="text" id="registerNome" required>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="registerEmail" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="registerPassword" required>
+          </div>
+          <button type="submit" class="submit-btn">Registrati</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- App Principale -->
+    <div id="mainApp" class="section">
+      <!-- Ricerca -->
+      <div id="ricercaTab" class="section-tab active">
+        <div class="search-section">
+          <h2>Cerca Strutture</h2>
+          <div id="searchAlert" class="alert"></div>
+          <div class="search-grid">
+            <input type="text" id="searchNome" placeholder="Nome struttura...">
+            <input type="text" id="searchCità" placeholder="Città...">
+            <select id="searchRegione">
+              <option value="">Tutte le Regioni</option>
+              <option>Piemonte</option>
+              <option>Valle d'Aosta</option>
+              <option>Lombardia</option>
+              <option>Trentino-Alto Adige</option>
+              <option>Veneto</option>
+              <option>Friuli-Venezia Giulia</option>
+              <option>Liguria</option>
+              <option>Emilia-Romagna</option>
+              <option>Toscana</option>
+              <option>Umbria</option>
+              <option>Marche</option>
+              <option>Lazio</option>
+              <option>Abruzzo</option>
+              <option>Molise</option>
+              <option>Campania</option>
+              <option>Puglia</option>
+              <option>Basilicata</option>
+              <option>Calabria</option>
+              <option>Sicilia</option>
+              <option>Sardegna</option>
+            </select>
+            <button class="search-btn" id="searchBtn">Cerca</button>
+          </div>
+        </div>
+
+        <div id="risultati">
+          <div style="text-align: center; padding: 40px; color: #6b7280;">
+            <h3>Inizia a cercare</h3>
+            <p>Usa i filtri sopra per trovare le strutture</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistiche -->
+      <div id="statisticheTab" class="section-tab">
+        <h2 style="color: white; margin-bottom: 20px;">Dashboard Statistiche</h2>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Strutture Totali</div>
+            <div class="stat-value" id="statStrutture">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Recensioni Pubblicate</div>
+            <div class="stat-value" id="statReview">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Rating Medio</div>
+            <div class="stat-value" id="statRating">-</div>
+            <div class="stat-subtext" id="statRatingPercent">Basato su tutte le strutture</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Dipendenti Attivi</div>
+            <div class="stat-value" id="statUtenti">-</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+          <div class="chart-container">
+            <h3>Top Regioni per Rating</h3>
+            <canvas id="chartRegioni"></canvas>
+          </div>
+          <div class="chart-container">
+            <h3>Distribuzione Rating</h3>
+            <canvas id="chartDistribuzione"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <h3>Province Principali</h3>
+          <canvas id="chartProvince"></canvas>
+        </div>
+      </div>
+
+      <!-- Verificazione -->
+      <div id="verificazioneTab" class="section-tab">
+        <div class="verificazione-section">
+          <h2>Verificazione Dipendente</h2>
+          <p style="color: #6b7280; margin-bottom: 20px;">Verifica la tua esperienza lavorativa per ottenere il badge "Dipendente Verificato"</p>
+          
+          <div id="verificazioneStatus"></div>
+
+          <form id="verificazioneForm" style="margin-top: 30px;">
+            <h3 style="color: #1f2937; margin-bottom: 20px;">Nuova Richiesta di Verificazione</h3>
+            
+            <div class="form-group">
+              <label>Struttura Attuale/Precedente</label>
+              <select id="strutturaDrop" required>
+                <option value="">Seleziona una struttura...</option>
+              </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div class="form-group">
+                <label>Data Inizio</label>
+                <input type="date" id="periodoInizio" required>
+              </div>
+              <div class="form-group">
+                <label>Data Fine (opzionale)</label>
+                <input type="date" id="periodoFine">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Posizione Ricoperta</label>
+              <select id="posizione" required>
+                <option value="">Seleziona...</option>
+                <option>Chef</option>
+                <option>Sous Chef</option>
+                <option>Cameriere</option>
+                <option>Receptionist</option>
+                <option>Housekeeping</option>
+                <option>Pizzaiolo</option>
+                <option>Pasticcere</option>
+                <option>Commis Chef</option>
+                <option>Altro</option>
+              </select>
+            </div>
+
+            <button type="submit" class="submit-btn" style="margin-top: 20px;">Invia Richiesta di Verificazione</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Le Mie Review -->
+      <div id="mieReviewTab" class="section-tab">
+        <div style="background: white; padding: 30px; border-radius: 12px;">
+          <h2 style="color: #1f2937; margin-bottom: 20px;">Le Mie Recensioni</h2>
+          <div id="mieReviewList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script>
+    const API_URL = 'http://localhost:5000/api';
+    let chartRegioni, chartDistribuzione, chartProvince;
+
+    const app = {
+      token: localStorage.getItem('token'),
+      user: JSON.parse(localStorage.getItem('user') || 'null'),
+
+      init() {
+        this.setupEventListeners();
+        this.updateUI();
+      },
+
+      setupEventListeners() {
+        // Auth
+        document.querySelectorAll('#authNav .nav-btn')[0].addEventListener('click', () => this.showSection('login'));
+        document.querySelectorAll('#authNav .nav-btn')[1].addEventListener('click', () => this.showSection('register'));
+        document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
+
+        // Forms
+        document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
+        document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
+        document.getElementById('searchBtn').addEventListener('click', () => this.searchStrutture());
+        document.getElementById('verificazioneForm').addEventListener('submit', (e) => this.handleVerificazione(e));
+
+        // Tabs
+        document.querySelectorAll('#mainNav .nav-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('#mainNav .nav-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            const tab = e.target.dataset.tab;
+            document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab + 'Tab').classList.add('active');
+
+            if (tab === 'statistiche') {
+              setTimeout(() => this.loadStatistiche(), 300);
+            }
+          });
+        });
+      },
+
+      updateUI() {
+        if (this.token) {
+          document.getElementById('loginSection').classList.remove('active');
+          document.getElementById('registerSection').classList.remove('active');
+          document.getElementById('mainApp').classList.add('active');
+          document.getElementById('userNav').style.display = 'flex';
+          document.getElementById('authNav').style.display = 'none';
+          document.getElementById('userName').textContent = this.user?.nome || 'Utente';
+          
+          if (this.user?.verificato) {
+            document.getElementById('badgeVerificato').style.display = 'inline-block';
+          }
+          
+          this.loadStruttureDrop();
+          this.loadMieReview();
+        } else {
+          document.getElementById('loginSection').classList.add('active');
+          document.getElementById('mainApp').classList.remove('active');
+          document.getElementById('userNav').style.display = 'none';
+          document.getElementById('authNav').style.display = 'flex';
+        }
+      },
+
+      showSection(section) {
+        if (section === 'login') {
+          document.getElementById('loginSection').classList.add('active');
+          document.getElementById('registerSection').classList.remove('active');
+        } else if (section === 'register') {
+          document.getElementById('loginSection').classList.remove('active');
+          document.getElementById('registerSection').classList.add('active');
+        }
+      },
+
+      async handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+          const res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          this.token = data.token;
+          this.user = data.user;
+          localStorage.setItem('token', this.token);
+          localStorage.setItem('user', JSON.stringify(this.user));
+          this.updateUI();
+        } catch (err) {
+          this.showAlert('loginAlert', err.message, 'error');
+        }
+      },
+
+      async handleRegister(e) {
+        e.preventDefault();
+        const nome = document.getElementById('registerNome').value;
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+
+        try {
+          const res = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, email, password })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          this.token = data.token;
+          this.user = data.user;
+          localStorage.setItem('token', this.token);
+          localStorage.setItem('user', JSON.stringify(this.user));
+          this.updateUI();
+        } catch (err) {
+          this.showAlert('registerAlert', err.message, 'error');
+        }
+      },
+
+      async searchStrutture() {
+        const nome = document.getElementById('searchNome').value;
+        const città = document.getElementById('searchCità').value;
+        const regione = document.getElementById('searchRegione').value;
+
+        const params = new URLSearchParams();
+        if (nome) params.append('nome', nome);
+        if (città) params.append('città', città);
+        if (regione) params.append('regione', regione);
+
+        try {
+          const res = await fetch(`${API_URL}/strutture?${params}`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const strutture = await res.json();
+
+          let html = '';
+          if (strutture.length === 0) {
+            html = '<div style="text-align: center; padding: 40px; color: #6b7280;"><h3>Nessuna struttura trovata</h3></div>';
+          } else {
+            html = '<div class="strutture-grid">';
+            strutture.forEach(s => {
+              const stars = '★'.repeat(Math.round(s.rating)) + '☆'.repeat(5 - Math.round(s.rating));
+              html += `
+                <div class="struttura-card" style="cursor: pointer;" onclick="app.viewStruttura(${s.id})">
+                  <h3>${s.nome}</h3>
+                  <div class="struttura-info">
+                    <div><strong>${s.tipo}</strong></div>
+                    <div>${s.città}, ${s.provincia}</div>
+                  </div>
+                  <div class="rating">
+                    <span class="stars">${stars}</span>
+                    <span class="rating-value">${s.rating.toFixed(1)}</span>
+                  </div>
+                  <div style="font-size: 12px; color: #9ca3af;">${s.num_reviews} review</div>
+                </div>
+              `;
+            });
+            html += '</div>';
+          }
+
+          document.getElementById('risultati').innerHTML = html;
+        } catch (err) {
+          this.showAlert('searchAlert', err.message, 'error');
+        }
+      },
+
+      async viewStruttura(id) {
+        try {
+          const res = await fetch(`${API_URL}/strutture/${id}`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const data = await res.json();
+
+          let html = `
+            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 30px;">
+              <h1 style="color: #1f2937; margin-bottom: 20px;">${data.struttura.nome}</h1>
+              
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+                  <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Tipo</div>
+                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${data.struttura.tipo}</div>
+                </div>
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+                  <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Ubicazione</div>
+                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${data.struttura.città}, ${data.struttura.provincia}</div>
+                </div>
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+                  <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Rating</div>
+                  <div style="font-size: 28px; color: #f59e0b; font-weight: 700;">★ ${data.struttura.rating.toFixed(1)}</div>
+                </div>
+              </div>
+
+              <h3 style="color: #1f2937; margin: 30px 0 20px;">Scrivi Recensione</h3>
+              <form id="reviewForm" style="background: #f9fafb; padding: 25px; border-radius: 12px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                  <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Chef (1-5)</label>
+                    <input type="range" id="valChef" min="1" max="5" value="3" style="width: 100%;">
+                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valChefDisplay">3</div>
+                  </div>
+                  <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Datore (1-5)</label>
+                    <input type="range" id="valDatore" min="1" max="5" value="3" style="width: 100%;">
+                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valDatoreDisplay">3</div>
+                  </div>
+                  <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Clima (1-5)</label>
+                    <input type="range" id="valClima" min="1" max="5" value="3" style="width: 100%;">
+                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valClimaDisplay">3</div>
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                  <input type="text" id="salario" placeholder="Salario (es: 1500€)" style="padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px;">
+                  <input type="text" id="ore" placeholder="Ore (es: 40h)" style="padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px;">
+                </div>
+
+                <textarea id="commento" placeholder="La tua esperienza..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; min-height: 120px; font-family: inherit; margin-bottom: 20px;"></textarea>
+
+                <button type="submit" class="submit-btn">Pubblica Recensione</button>
+              </form>
+            </div>
+
+            <div style="background: white; padding: 30px; border-radius: 12px;">
+              <h3 style="color: #1f2937; margin-bottom: 20px;">Recensioni (${data.reviews.length})</h3>
+              ${data.reviews.length === 0 ? '<p style="color: #9ca3af;">Nessuna recensione ancora. Sii il primo!</p>' : ''}
+              ${data.reviews.map(r => `
+                <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ec4899;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <strong style="color: #1f2937;">${r.nome}</strong>
+                    <span style="color: #9ca3af; font-size: 12px;">${new Date(r.created_at).toLocaleDateString('it-IT')}</span>
+                  </div>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; font-size: 13px; color: #6b7280;">
+                    <div>Chef: ★ ${r.valutazione_chef}</div>
+                    <div>Datore: ★ ${r.valutazione_datore}</div>
+                    <div>Clima: ★ ${r.clima_lavoro}</div>
+                    ${r.salario ? `<div>Salario: ${r.salario}</div>` : ''}
+                    ${r.ore_lavoro ? `<div>Ore: ${r.ore_lavoro}</div>` : ''}
+                  </div>
+                  ${r.commento ? `<div style="color: #4b5563; margin-top: 10px;">${r.commento}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          `;
+
+          document.getElementById('risultati').innerHTML = html;
+
+          // Setup form handlers
+          document.getElementById('valChef').addEventListener('change', (e) => {
+            document.getElementById('valChefDisplay').textContent = e.target.value;
+          });
+          document.getElementById('valDatore').addEventListener('change', (e) => {
+            document.getElementById('valDatoreDisplay').textContent = e.target.value;
+          });
+          document.getElementById('valClima').addEventListener('change', (e) => {
+            document.getElementById('valClimaDisplay').textContent = e.target.value;
+          });
+
+          document.getElementById('reviewForm').addEventListener('submit', (e) => this.submitReview(e, id));
+        } catch (err) {
+          this.showAlert('searchAlert', err.message, 'error');
+        }
+      },
+
+      async submitReview(e, struturaId) {
+        e.preventDefault();
+        const review = {
+          struttura_id: struturaId,
+          valutazione_chef: parseInt(document.getElementById('valChef').value),
+          valutazione_datore: parseInt(document.getElementById('valDatore').value),
+          clima_lavoro: parseInt(document.getElementById('valClima').value),
+          salario: document.getElementById('salario').value,
+          ore_lavoro: document.getElementById('ore').value,
+          commento: document.getElementById('commento').value
+        };
+
+        try {
+          const res = await fetch(`${API_URL}/reviews`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.token}`
+            },
+            body: JSON.stringify(review)
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          this.showAlert('searchAlert', data.moderato === 1 ? 'Recensione pubblicata!' : 'Recensione in moderazione...', 'success');
+          setTimeout(() => this.viewStruttura(struturaId), 1500);
+        } catch (err) {
+          this.showAlert('searchAlert', err.message, 'error');
+        }
+      },
+
+      async loadStatistiche() {
+        try {
+          const res = await fetch(`${API_URL}/stats`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const data = await res.json();
+
+          document.getElementById('statStrutture').textContent = data.num_strutture;
+          document.getElementById('statReview').textContent = data.num_reviews;
+          document.getElementById('statRating').textContent = data.rating_medio;
+          document.getElementById('statUtenti').textContent = data.num_utenti;
+
+          // Grafici
+          if (data.regioni && data.regioni.length > 0) {
+            const regioni = data.regioni.slice(0, 8);
+            const ctx1 = document.getElementById('chartRegioni').getContext('2d');
+            if (chartRegioni) chartRegioni.destroy();
+            chartRegioni = new Chart(ctx1, {
+              type: 'bar',
+              data: {
+                labels: regioni.map(r => r.regione),
+                datasets: [{
+                  label: 'Rating Medio',
+                  data: regioni.map(r => parseFloat(r.rating_medio)),
+                  backgroundColor: '#ec4899'
+                }]
+              },
+              options: { responsive: true, maintainAspectRatio: false }
+            });
+          }
+
+          // Distribuzione rating
+          const resDistrib = await fetch(`${API_URL}/stats/distribuzione-rating`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const distrib = await resDistrib.json();
+
+          if (distrib && distrib.length > 0) {
+            const ctx2 = document.getElementById('chartDistribuzione').getContext('2d');
+            if (chartDistribuzione) chartDistribuzione.destroy();
+            chartDistribuzione = new Chart(ctx2, {
+              type: 'doughnut',
+              data: {
+                labels: distrib.map(d => d.fascia),
+                datasets: [{
+                  data: distrib.map(d => d.count),
+                  backgroundColor: ['#10b981', '#84cc16', '#f59e0b', '#ef4444', '#8b5cf6']
+                }]
+              },
+              options: { responsive: true, maintainAspectRatio: false }
+            });
+          }
+
+          // Province
+          const resProvince = await fetch(`${API_URL}/stats/provincia`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const province = await resProvince.json();
+
+          if (province && province.length > 0) {
+            const top12 = province.slice(0, 12);
+            const ctx3 = document.getElementById('chartProvince').getContext('2d');
+            if (chartProvince) chartProvince.destroy();
+            chartProvince = new Chart(ctx3, {
+              type: 'bar',
+              data: {
+                labels: top12.map(p => p.provincia),
+                datasets: [{
+                  label: 'Strutture',
+                  data: top12.map(p => p.num_strutture),
+                  backgroundColor: '#ec4899'
+                }]
+              },
+              options: { 
+                indexAxis: 'y',
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { x: { beginAtZero: true } }
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Errore statistiche:', err);
+        }
+      },
+
+      async loadStruttureDrop() {
+        try {
+          const res = await fetch(`${API_URL}/strutture?&limit=500`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const strutture = await res.json();
+
+          const select = document.getElementById('strutturaDrop');
+          strutture.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = `${s.nome} (${s.città}, ${s.provincia})`;
+            select.appendChild(opt);
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      },
+
+      async handleVerificazione(e) {
+        e.preventDefault();
+
+        const verificazione = {
+          struttura_id: parseInt(document.getElementById('strutturaDrop').value),
+          periodo_inizio: document.getElementById('periodoInizio').value,
+          periodo_fine: document.getElementById('periodoFine').value,
+          posizione: document.getElementById('posizione').value
+        };
+
+        try {
+          const res = await fetch(`${API_URL}/verificazione/richiedi`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.token}`
+            },
+            body: JSON.stringify(verificazione)
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          this.showAlert('verificazioneStatus', 'Richiesta inviata! Controlleremo entro 48h', 'success');
+          document.getElementById('verificazioneForm').reset();
+          this.loadVerificazioneStatus();
+        } catch (err) {
+          this.showAlert('verificazioneStatus', err.message, 'error');
+        }
+      },
+
+      async loadVerificazioneStatus() {
+        try {
+          const res = await fetch(`${API_URL}/verificazione/stato`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const verificazioni = await res.json();
+
+          let html = '';
+          if (verificazioni.length === 0) {
+            html = '<p style="color: #6b7280;">Nessuna richiesta di verificazione ancora.</p>';
+          } else {
+            verificazioni.forEach(v => {
+              const badge = v.verificato === 1 ? 'approved' : 'pending';
+              const testo = v.verificato === 1 ? '✓ Verificato' : '⏳ In attesa di revisione';
+              html += `
+                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${v.verificato === 1 ? '#10b981' : '#fbbf24'};">
+                  <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">${v.posizione}</div>
+                  <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">Periodo: ${v.periodo_inizio} ${v.periodo_fine ? ' - ' + v.periodo_fine : ''}</div>
+                  <span class="status-badge ${badge}">${testo}</span>
+                </div>
+              `;
+            });
+          }
+
+          document.getElementById('verificazioneStatus').innerHTML = html;
+        } catch (err) {
+          console.error(err);
+        }
+      },
+
+      async loadMieReview() {
+        try {
+          const res = await fetch(`${API_URL}/my-reviews`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const reviews = await res.json();
+
+          let html = '';
+          if (reviews.length === 0) {
+            html = '<p style="color: #6b7280;">Non hai scritto nessuna recensione ancora.</p>';
+          } else {
+            html = reviews.map(r => `
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ec4899;">
+                <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">Rating Medio: ${r.rating_medio?.toFixed(1)}</div>
+                <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
+                  ${r.moderato === 1 ? '✓ Pubblicata' : '⏳ In moderazione'}
+                </div>
+                <div style="color: #4b5563; margin-top: 10px;">${r.commento}</div>
+              </div>
+            `).join('');
+          }
+
+          document.getElementById('mieReviewList').innerHTML = html;
+        } catch (err) {
+          console.error(err);
+        }
+      },
+
+      logout() {
+        this.token = null;
+        this.user = null;
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        this.updateUI();
+      },
+
+      showAlert(elementId, message, type) {
+        const alert = document.getElementById(elementId);
+        if (!alert) return;
+        alert.textContent = message;
+        alert.className = `alert show ${type}`;
+        setTimeout(() => alert.classList.remove('show'), 5000);
+      }
+    };
+
+    app.init();
+  </script>
+</body>
+</html>
