@@ -35,7 +35,8 @@ const OVERPASS_MIRRORS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-const db = new sqlite3.Database('./trustourant.db', (err) => {
+const DB_PATH = process.env.DB_PATH || './trustourant.db';
+const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) { console.error('Errore database:', err); process.exit(1); }
   console.log('Database connesso.\n');
 });
