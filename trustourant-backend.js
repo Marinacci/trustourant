@@ -29,7 +29,8 @@ app.use(cors());
 app.use(express.json());
 
 // Database SQLite
-const db = new sqlite3.Database('./trustourant.db', (err) => {
+const DB_PATH = process.env.DB_PATH || './trustourant.db';
+const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) console.error('Database error:', err);
   else console.log('Database connected');
 });
