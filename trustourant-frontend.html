@@ -879,9 +879,9 @@
               <form id="reviewForm" style="background: #f9fafb; padding: 25px; border-radius: 12px;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                   <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Chef (1-5)</label>
-                    <input type="range" id="valChef" min="1" max="5" value="3" style="width: 100%;">
-                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valChefDisplay">3</div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Responsabile diretto (1-5)</label>
+                    <input type="range" id="valResponsabile" min="1" max="5" value="3" style="width: 100%;">
+                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valResponsabileDisplay">3</div>
                   </div>
                   <div>
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Datore (1-5)</label>
@@ -939,7 +939,7 @@
                     <span style="color: #9ca3af; font-size: 12px;">${new Date(r.created_at).toLocaleDateString('it-IT')}</span>
                   </div>
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; font-size: 13px; color: #6b7280;">
-                    <div>Chef: ★ ${r.valutazione_chef}</div>
+                    <div>Responsabile diretto: ★ ${r.valutazione_chef}</div>
                     <div>Datore: ★ ${r.valutazione_datore}</div>
                     <div>Clima: ★ ${r.clima_lavoro}</div>
                     ${r.salario ? `<div>Salario: ${r.salario}</div>` : ''}
@@ -974,8 +974,8 @@
           document.getElementById('risultati').innerHTML = html;
 
           // Setup form handlers
-          document.getElementById('valChef').addEventListener('change', (e) => {
-            document.getElementById('valChefDisplay').textContent = e.target.value;
+          document.getElementById('valResponsabile').addEventListener('change', (e) => {
+            document.getElementById('valResponsabileDisplay').textContent = e.target.value;
           });
           document.getElementById('valDatore').addEventListener('change', (e) => {
             document.getElementById('valDatoreDisplay').textContent = e.target.value;
@@ -1024,7 +1024,7 @@
         e.preventDefault();
         const review = {
           struttura_id: struturaId,
-          valutazione_chef: parseInt(document.getElementById('valChef').value),
+          valutazione_chef: parseInt(document.getElementById('valResponsabile').value),
           valutazione_datore: parseInt(document.getElementById('valDatore').value),
           clima_lavoro: parseInt(document.getElementById('valClima').value),
           salario: document.getElementById('salario').value,

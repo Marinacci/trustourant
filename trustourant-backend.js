@@ -781,7 +781,7 @@ app.get('/api/admin/export-csv', verifyToken, isAdmin, (req, res) => {
      ORDER BY r.created_at DESC`,
     (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
-      const header = 'ID,Dipendente,Struttura,Chef,Datore,Salario,Ore,Clima,RatingMedio,Commento,Approvato,Respinto,Data\n';
+      const header = 'ID,Dipendente,Struttura,ResponsabileDiretto,Datore,Salario,Ore,Clima,RatingMedio,Commento,Approvato,Respinto,Data\n';
       const csv = rows.map(r => [r.id, r.dipendente, r.struttura, r.valutazione_chef, r.valutazione_datore, r.salario, r.ore_lavoro, r.clima_lavoro, r.rating_medio, `"${(r.commento || '').replace(/"/g, '""')}"`, r.moderato, r.respinto, r.created_at].join(',')).join('\n');
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename=trustourant-reviews.csv');
