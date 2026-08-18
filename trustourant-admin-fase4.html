@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustOurant - Admin Dashboard Fase 4</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #1f2937; line-height: 1.6; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    header { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px 0; margin-bottom: 30px; }
+    header .container { display: flex; justify-content: space-between; align-items: center; padding-top: 0; padding-bottom: 0; }
+    .logo { font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .admin-badge { background: #1f2937; color: white; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 12px; }
+    .login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.97); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .login-box { background: white; padding: 40px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; }
+    .login-box h2 { color: #1f2937; margin-bottom: 20px; }
+    .login-box input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px; margin-bottom: 15px; }
+    .login-box button { width: 100%; padding: 12px; background: #ec4899; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 16px; }
+    .login-error { color: #ef4444; font-size: 14px; margin-top: 10px; display: none; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid rgba(255,255,255,0.2); flex-wrap: wrap; }
+    .tab-btn { padding: 12px 20px; background: none; border: none; color: #cbd5e1; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.3s; }
+    .tab-btn.active { color: #ec4899; border-bottom-color: #ec4899; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+    .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+    .stat-label { color: #9ca3af; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 10px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: #ec4899; }
+    .card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .review-card { border-left: 4px solid #f59e0b; }
+    .review-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .review-user { font-weight: 600; color: #1f2937; font-size: 16px; }
+    .review-date { color: #9ca3af; font-size: 12px; }
+    .review-content { background: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    .ratings { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 15px; }
+    .rating-item { background: #f3f4f6; padding: 10px; border-radius: 6px; font-size: 13px; }
+    .rating-label { color: #6b7280; font-weight: 600; }
+    .rating-value { color: #ec4899; font-weight: 700; font-size: 18px; }
+    .buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; }
+    .btn-approve { background: #10b981; color: white; }
+    .btn-approve:hover { background: #059669; }
+    .btn-reject { background: #ef4444; color: white; }
+    .btn-reject:hover { background: #dc2626; }
+    .btn-ban { background: #7c2d12; color: white; }
+    .btn-export { background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; display: inline-block; }
+    .verification-status { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e; }
+    .empty { padding: 40px; text-align: center; color: #9ca3af; }
+    .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
+    .alert.show { display: block; }
+    .alert.success { background: #d1fae5; color: #065f46; }
+    .alert.error { background: #fee2e2; color: #991b1b; }
+    .section-title { color: white; margin-bottom: 20px; }
+    @media (max-width: 768px) { .review-header { flex-direction: column; } .buttons { flex-direction: column; } .btn { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+      <div class="logo" style="font-size: 28px; margin-bottom: 10px;">TrustOurant</div>
+      <h2>Accesso Admin</h2>
+      <input type="email" id="adminEmail" placeholder="Email admin">
+      <input type="password" id="adminPassword" placeholder="Password">
+      <button onclick="admin.login()">Accedi</button>
+      <div id="loginError" class="login-error">Credenziali non valide</div>
+      <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">Accedi con l'account admin (il tuo account, il primo registrato)</p>
+    </div>
+  </div>
+
+  <header>
+    <div class="container">
+      <div class="logo">TrustOurant Admin</div>
+      <div class="admin-badge">Dashboard Moderazione</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="alert" class="alert"></div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="reviews">Review da Moderare</button>
+      <button class="tab-btn" data-tab="verificazioni">Verificazioni</button>
+      <button class="tab-btn" data-tab="risposte">Risposte Datori</button>
+      <button class="tab-btn" data-tab="strutture">Gestione Strutture</button>
+      <button class="tab-btn" data-tab="export">Esporta Dati</button>
+    </div>
+
+    <div id="dashboardSection" class="section active">
+      <h2 class="section-title">Panoramica Moderazione</h2>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">In Attesa</div><div class="stat-value" id="statPending">-</div></div>
+        <div class="stat-card"><div class="stat-label">Approvate</div><div class="stat-value" id="statApproved">-</div></div>
+        <div class="stat-card"><div class="stat-label">Rifiutate</div><div class="stat-value" id="statRejected">-</div></div>
+        <div class="stat-card"><div class="stat-label">Tasso Approvazione</div><div class="stat-value" id="statRate">-</div></div>
+      </div>
+      <div class="card">
+        <h3 style="color: #1f2937; margin-bottom: 15px;">Come funziona</h3>
+        <div style="color: #6b7280;">
+          <p>Vai su <strong>"Review da Moderare"</strong> per approvare o rifiutare le recensioni segnalate dal filtro automatico.</p>
+          <p>Vai su <strong>"Verificazioni"</strong> per confermare i dipendenti che hanno chiesto il badge verificato.</p>
+          <p>Ogni azione invia automaticamente un'email di notifica all'utente interessato.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="reviewsSection" class="section">
+      <h2 class="section-title">Review da Moderare</h2>
+      <div id="reviewsList"><div class="card"><div class="empty">Caricamento...</div></div></div>
+    </div>
+
+    <div id="verificazioniSection" class="section">
+      <h2 class="section-title">Verificazioni Dipendenti</h2>
+      <div id="verificazioniList"><div class="card"><div class="empty">Caricamento...</div></div></div>
+    </div>
+
+    <div id="risposteSection" class="section">
+      <h2 class="section-title">Risposte dei Datori da Approvare</h2>
+      <p style="color: #cbd5e1; margin-bottom: 20px; font-size: 14px;">Qualcuno ha risposto a nome di una struttura senza avere un account — verifica che sia davvero legittimo prima di approvare.</p>
+      <div id="risposteList"><div class="card"><div class="empty">Caricamento...</div></div></div>
+    </div>
+
+    <div id="struttureSection" class="section">
+      <h2 class="section-title">Gestione Strutture — Vitto/Alloggio e Stagionalità</h2>
+      <div class="card">
+        <h3 style="color: #1f2937; margin-bottom: 15px;">Cerca una struttura</h3>
+        <input type="text" id="struttureSearchInput" placeholder="Nome della struttura..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px;">
+        <button class="btn btn-approve" onclick="admin.searchStrutture()">Cerca</button>
+      </div>
+      <div id="struttureList"></div>
+    </div>
+
+    <div id="exportSection" class="section">
+      <h2 class="section-title">Esporta Dati</h2>
+      <div class="card">
+        <h3 style="color: #1f2937; margin-bottom: 15px;">Scarica tutte le review in CSV</h3>
+        <p style="color: #6b7280; margin-bottom: 20px;">Il file CSV puoi aprirlo con Excel o Google Fogli. Contiene tutte le review con dipendente, struttura, valutazioni e stato.</p>
+        <button class="btn btn-export" onclick="admin.exportCsv()">Scarica CSV Review</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://trustourant-backend.onrender.com/api';
+    const admin = {
+      token: localStorage.getItem('admin_token'),
+      init() {
+        if (this.token) { document.getElementById('loginOverlay').style.display = 'none'; this.loadDashboard(); this.setupTabs(); }
+      },
+      async login() {
+        const email = document.getElementById('adminEmail').value;
+        const password = document.getElementById('adminPassword').value;
+        try {
+          const res = await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.token = data.token;
+          localStorage.setItem('admin_token', this.token);
+          document.getElementById('loginOverlay').style.display = 'none';
+          this.loadDashboard(); this.setupTabs();
+        } catch (err) {
+          const e = document.getElementById('loginError'); e.style.display = 'block'; e.textContent = err.message;
+        }
+      },
+      setupTabs() {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            const tab = e.target.dataset.tab;
+            document.getElementById(tab + 'Section').classList.add('active');
+            if (tab === 'dashboard') this.loadDashboard();
+            if (tab === 'reviews') this.loadReviews();
+            if (tab === 'verificazioni') this.loadVerificazioni();
+            if (tab === 'risposte') this.loadRisposte();
+          });
+        });
+      },
+      headers() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` }; },
+      async loadDashboard() {
+        try {
+          const res = await fetch(`${API_URL}/admin/stats-moderazione`, { headers: this.headers() });
+          const d = await res.json();
+          document.getElementById('statPending').textContent = d.pending;
+          document.getElementById('statApproved').textContent = d.approved;
+          document.getElementById('statRejected').textContent = d.rejected;
+          document.getElementById('statRate').textContent = d.tasso_approvazione + '%';
+        } catch (err) { this.showAlert('Errore: ' + err.message, 'error'); }
+      },
+      async loadReviews() {
+        try {
+          const res = await fetch(`${API_URL}/admin/reviews-pending`, { headers: this.headers() });
+          const reviews = await res.json();
+          if (!reviews || reviews.length === 0) {
+            document.getElementById('reviewsList').innerHTML = '<div class="card"><div class="empty">Nessuna review da moderare. Tutto pulito!</div></div>';
+            return;
+          }
+          document.getElementById('reviewsList').innerHTML = reviews.map(r => `
+            <div class="card review-card">
+              <div class="review-header">
+                <div><div class="review-user">${r.nome || 'Utente'}</div><div class="review-date">${new Date(r.created_at).toLocaleString('it-IT')}</div></div>
+                <div style="font-weight: 600; color: #f59e0b;">IN MODERAZIONE</div>
+              </div>
+              <div style="color: #6b7280; font-size: 14px;">${r.struttura_nome || 'Struttura #' + r.struttura_id}</div>
+              <div class="ratings">
+                <div class="rating-item"><div class="rating-label">Chef</div><div class="rating-value">${r.valutazione_chef || '-'}</div></div>
+                <div class="rating-item"><div class="rating-label">Datore</div><div class="rating-value">${r.valutazione_datore || '-'}</div></div>
+                <div class="rating-item"><div class="rating-label">Clima</div><div class="rating-value">${r.clima_lavoro || '-'}</div></div>
+              </div>
+              <div class="review-content">${r.commento || '(nessun commento)'}</div>
+              <div class="buttons">
+                <button class="btn btn-approve" onclick="admin.approveReview(${r.id})">Approva</button>
+                <button class="btn btn-reject" onclick="admin.rejectReview(${r.id})">Rifiuta</button>
+                <button class="btn btn-ban" onclick="admin.banUser(${r.user_id})">Banna Utente</button>
+              </div>
+            </div>
+          `).join('');
+        } catch (err) {
+          document.getElementById('reviewsList').innerHTML = '<div class="card"><div class="empty">Errore di connessione al backend.</div></div>';
+        }
+      },
+      async loadVerificazioni() {
+        try {
+          const res = await fetch(`${API_URL}/admin/verificazioni-pending`, { headers: this.headers() });
+          const verifs = await res.json();
+          if (!verifs || verifs.length === 0) {
+            document.getElementById('verificazioniList').innerHTML = '<div class="card"><div class="empty">Nessuna verificazione in attesa.</div></div>';
+            return;
+          }
+          document.getElementById('verificazioniList').innerHTML = verifs.map(v => `
+            <div class="card">
+              <div class="review-header">
+                <div><div class="review-user">${v.nome || 'Utente'}</div><div class="review-date">${v.email || ''}</div></div>
+                <span class="verification-status">In Attesa</span>
+              </div>
+              <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 14px;">
+                <div><strong>Struttura:</strong> ${v.struttura_nome || '#' + v.struttura_id}</div>
+                <div><strong>Posizione:</strong> ${v.posizione}</div>
+                <div><strong>Periodo:</strong> ${v.periodo_inizio || '?'} - ${v.periodo_fine || 'Presente'}</div>
+              </div>
+              <div class="buttons">
+                <button class="btn btn-approve" onclick="admin.approveVerif(${v.id})">Approva Verificazione</button>
+              </div>
+            </div>
+          `).join('');
+        } catch (err) {
+          document.getElementById('verificazioniList').innerHTML = '<div class="card"><div class="empty">Errore di connessione al backend.</div></div>';
+        }
+      },
+      async approveReview(id) {
+        await fetch(`${API_URL}/admin/reviews/approva/${id}`, { method: 'POST', headers: this.headers() });
+        this.showAlert('Review approvata e utente notificato via email', 'success');
+        this.loadReviews();
+      },
+      async rejectReview(id) {
+        const motivo = prompt('Motivo del rifiuto (opzionale):') || '';
+        await fetch(`${API_URL}/admin/reviews/rifiuta/${id}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ motivo }) });
+        this.showAlert('Review rifiutata e utente notificato', 'success');
+        this.loadReviews();
+      },
+      async banUser(id) {
+        if (!confirm('Sicuro di voler bannare questo utente?')) return;
+        const motivo = prompt('Motivo del ban:') || '';
+        await fetch(`${API_URL}/admin/users/ban/${id}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ motivo }) });
+        this.showAlert('Utente bannato', 'success');
+        this.loadReviews();
+      },
+      async approveVerif(id) {
+        await fetch(`${API_URL}/admin/verificazione/approva/${id}`, { method: 'POST', headers: this.headers() });
+        this.showAlert('Verificazione approvata, badge assegnato ed email inviata', 'success');
+        this.loadVerificazioni();
+      },
+      async loadRisposte() {
+        try {
+          const res = await fetch(`${API_URL}/admin/reviews-risposte-pending`, { headers: this.headers() });
+          const risposte = await res.json();
+          if (!risposte || risposte.length === 0) {
+            document.getElementById('risposteList').innerHTML = '<div class="card"><div class="empty">Nessuna risposta in attesa.</div></div>';
+            return;
+          }
+          document.getElementById('risposteList').innerHTML = risposte.map(r => `
+            <div class="card review-card">
+              <div class="review-header">
+                <div><div class="review-user">${r.risposta_datore_nome || 'Anonimo'}</div><div class="review-date">${r.risposta_datore_email || ''} · ${new Date(r.risposta_datore_data).toLocaleString('it-IT')}</div></div>
+                <div style="font-weight: 600; color: #f59e0b;">IN ATTESA</div>
+              </div>
+              <div style="color: #6b7280; font-size: 14px;">Struttura: <strong>${r.struttura_nome}</strong></div>
+              <div class="review-content" style="font-size: 13px; color: #9ca3af;">Recensione originale: "${(r.commento || '').substring(0, 150)}${r.commento && r.commento.length > 150 ? '...' : ''}"</div>
+              <div class="review-content"><strong>Risposta proposta:</strong><br>${r.risposta_datore}</div>
+              <div class="buttons">
+                <button class="btn btn-approve" onclick="admin.approveRisposta(${r.id})">Approva e Pubblica</button>
+                <button class="btn btn-reject" onclick="admin.rejectRisposta(${r.id})">Rifiuta</button>
+              </div>
+            </div>
+          `).join('');
+        } catch (err) {
+          document.getElementById('risposteList').innerHTML = '<div class="card"><div class="empty">Errore di connessione al backend.</div></div>';
+        }
+      },
+      async approveRisposta(id) {
+        await fetch(`${API_URL}/admin/reviews/rispondi/approva/${id}`, { method: 'POST', headers: this.headers() });
+        this.showAlert('Risposta pubblicata', 'success');
+        this.loadRisposte();
+      },
+      async rejectRisposta(id) {
+        if (!confirm('Rifiutare questa risposta?')) return;
+        await fetch(`${API_URL}/admin/reviews/rispondi/rifiuta/${id}`, { method: 'POST', headers: this.headers() });
+        this.showAlert('Risposta rifiutata', 'success');
+        this.loadRisposte();
+      },
+      async searchStrutture() {
+        const nome = document.getElementById('struttureSearchInput').value;
+        if (!nome.trim()) return;
+        try {
+          const res = await fetch(`${API_URL}/strutture?nome=${encodeURIComponent(nome)}`);
+          const strutture = await res.json();
+          if (!strutture || strutture.length === 0) {
+            document.getElementById('struttureList').innerHTML = '<div class="card"><div class="empty">Nessuna struttura trovata.</div></div>';
+            return;
+          }
+          document.getElementById('struttureList').innerHTML = strutture.slice(0, 20).map(s => `
+            <div class="card">
+              <div class="review-user" style="margin-bottom: 5px;">${s.nome}</div>
+              <div style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">${s.città}, ${s.provincia}</div>
+              <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
+                <div style="flex: 1; min-width: 200px;">
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 5px;">Stagionalità</label>
+                  <select id="stagionalita-${s.id}" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
+                    <option value="" ${!s.stagionalita ? 'selected' : ''}>Non specificato</option>
+                    <option value="stagionale" ${s.stagionalita === 'stagionale' ? 'selected' : ''}>🏔️ Stagionale</option>
+                    <option value="tutto_anno" ${s.stagionalita === 'tutto_anno' ? 'selected' : ''}>🏨 Tutto l'anno</option>
+                  </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 5px;">Vitto e Alloggio</label>
+                  <input type="text" id="vitto-${s.id}" value="${s.vitto_alloggio || ''}" placeholder="Es: Vitto e alloggio inclusi" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
+                </div>
+              </div>
+              <button class="btn btn-approve" onclick="admin.saveStrutturaInfo(${s.id})">Salva</button>
+            </div>
+          `).join('');
+        } catch (err) {
+          document.getElementById('struttureList').innerHTML = '<div class="card"><div class="empty">Errore di connessione al backend.</div></div>';
+        }
+      },
+      async saveStrutturaInfo(id) {
+        const stagionalita = document.getElementById(`stagionalita-${id}`).value;
+        const vitto_alloggio = document.getElementById(`vitto-${id}`).value;
+        await fetch(`${API_URL}/admin/strutture/info/${id}`, { method: 'PUT', headers: this.headers(), body: JSON.stringify({ stagionalita, vitto_alloggio }) });
+        this.showAlert('Struttura aggiornata', 'success');
+      },
+      exportCsv() {
+        fetch(`${API_URL}/admin/export-csv`, { headers: this.headers() })
+          .then(r => r.blob())
+          .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'trustourant-reviews.csv'; a.click();
+            window.URL.revokeObjectURL(url);
+            this.showAlert('CSV scaricato', 'success');
+          })
+          .catch(() => this.showAlert('Errore export', 'error'));
+      },
+      showAlert(msg, type) {
+        const el = document.getElementById('alert');
+        el.textContent = msg; el.className = `alert show ${type}`;
+        setTimeout(() => el.classList.remove('show'), 5000);
+      }
+    };
+    admin.init();
+  </script>
+</body>
+</html>

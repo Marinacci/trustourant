@@ -65,6 +65,8 @@ db.serialize(() => {
     rating REAL DEFAULT 0,
     num_reviews INTEGER DEFAULT 0,
     bloccata INTEGER DEFAULT 0,
+    vitto_alloggio TEXT,
+    stagionalita TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
@@ -79,6 +81,13 @@ db.serialize(() => {
     ore_lavoro TEXT,
     clima_lavoro INTEGER,
     commento TEXT,
+    consiglio_direzione TEXT,
+    rifaresti TEXT,
+    colloquio_info TEXT,
+    consiglierebbe INTEGER,
+    risposta_datore TEXT,
+    risposta_datore_data DATETIME,
+    risposta_datore_moderata INTEGER DEFAULT 0,
     rating_medio REAL,
     moderato INTEGER DEFAULT 0,
     respinto INTEGER DEFAULT 0,
@@ -148,6 +157,17 @@ aggiungiColonnaSeManca('users', 'bannato', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('users', 'is_admin', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('reviews', 'email_notificato', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('verificazioni', 'email_notificato', 'INTEGER DEFAULT 0');
+aggiungiColonnaSeManca('strutture', 'vitto_alloggio', 'TEXT');
+aggiungiColonnaSeManca('strutture', 'stagionalita', 'TEXT');
+aggiungiColonnaSeManca('reviews', 'consiglio_direzione', 'TEXT');
+aggiungiColonnaSeManca('reviews', 'rifaresti', 'TEXT');
+aggiungiColonnaSeManca('reviews', 'colloquio_info', 'TEXT');
+aggiungiColonnaSeManca('reviews', 'consiglierebbe', 'INTEGER');
+aggiungiColonnaSeManca('reviews', 'risposta_datore', 'TEXT');
+aggiungiColonnaSeManca('reviews', 'risposta_datore_data', 'DATETIME');
+aggiungiColonnaSeManca('reviews', 'risposta_datore_moderata', 'INTEGER DEFAULT 0');
+aggiungiColonnaSeManca('reviews', 'risposta_datore_nome', 'TEXT');
+aggiungiColonnaSeManca('reviews', 'risposta_datore_email', 'TEXT');
 
 // Imposta l'account amministratore principale (unico account con accesso al pannello admin)
 setTimeout(() => {
@@ -480,19 +500,20 @@ const controlloModerazione = (text) => {
 };
 
 app.post('/api/reviews', verifyToken, (req, res) => {
-  const { struttura_id, valutazione_chef, valutazione_datore, salario, ore_lavoro, clima_lavoro, commento } = req.body;
+  const { struttura_id, valutazione_chef, valutazione_datore, salario, ore_lavoro, clima_lavoro, commento, consiglio_direzione, rifaresti, colloquio_info, consiglierebbe } = req.body;
 
   if (!struttura_id) return res.status(400).json({ error: 'ID struttura obbligatorio' });
 
   const ratings = [valutazione_chef, valutazione_datore, clima_lavoro].filter(r => r);
   const rating_medio = ratings.length > 0 ? ratings.reduce((a, b) => a + b) / ratings.length : 0;
 
-  const flagsModerazione = controlloModerazione(commento || '');
+  const testoModerazione = [commento, consiglio_direzione, rifaresti, colloquio_info].filter(Boolean).join(' ');
+  const flagsModerazione = controlloModerazione(testoModerazione);
   const moderato = flagsModerazione.length === 0 ? 1 : 0;
 
   db.run(
-    'INSERT INTO reviews (user_id, struttura_id, valutazione_chef, valutazione_datore, salario, ore_lavoro, clima_lavoro, commento, rating_medio, moderato) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.userId, struttura_id, valutazione_chef, valutazione_datore, salario, ore_lavoro, clima_lavoro, commento, rating_medio, moderato],
+    'INSERT INTO reviews (user_id, struttura_id, valutazione_chef, valutazione_datore, salario, ore_lavoro, clima_lavoro, commento, consiglio_direzione, rifaresti, colloquio_info, consiglierebbe, rating_medio, moderato) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.userId, struttura_id, valutazione_chef, valutazione_datore, salario, ore_lavoro, clima_lavoro, commento, consiglio_direzione, rifaresti, colloquio_info, consiglierebbe, rating_medio, moderato],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
 
@@ -654,20 +675,136 @@ app.post('/api/admin/strutture/blocca/:struttura_id', verifyToken, isAdmin, (req
   res.json({ message: 'Struttura bloccata' });
 });
 
+// Chiunque dichiari di essere la struttura può rispondere a una recensione — la risposta resta nascosta finché l'admin non la approva
+app.post('/api/reviews/:review_id/rispondi', (req, res) => {
+  const { risposta, nome, email } = req.body;
+  const reviewId = req.params.review_id;
+
+  if (!risposta || !risposta.trim()) return res.status(400).json({ error: 'Risposta obbligatoria' });
+  if (!nome || !nome.trim()) return res.status(400).json({ error: 'Nome della struttura obbligatorio' });
+
+  db.run(
+    'UPDATE reviews SET risposta_datore = ?, risposta_datore_data = CURRENT_TIMESTAMP, risposta_datore_moderata = 0, risposta_datore_nome = ?, risposta_datore_email = ? WHERE id = ?',
+    [risposta, nome, email || null, reviewId],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'Recensione non trovata' });
+      res.json({ message: 'Risposta inviata, in attesa di approvazione' });
+    }
+  );
+});
+
+app.post('/api/admin/reviews/rispondi/approva/:review_id', verifyToken, isAdmin, (req, res) => {
+  const reviewId = req.params.review_id;
+
+  db.run('UPDATE reviews SET risposta_datore_moderata = 1 WHERE id = ?', [reviewId], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+
+    db.run('INSERT INTO admin_log (admin_id, azione, target_type, target_id) VALUES (?, ?, ?, ?)',
+      [req.userId, 'Risposta Datore Approvata', 'review', reviewId]);
+
+    res.json({ message: 'Risposta approvata e pubblicata' });
+  });
+});
+
+app.post('/api/admin/reviews/rispondi/rifiuta/:review_id', verifyToken, isAdmin, (req, res) => {
+  const reviewId = req.params.review_id;
+
+  db.run('UPDATE reviews SET risposta_datore = NULL, risposta_datore_moderata = 0, risposta_datore_nome = NULL, risposta_datore_email = NULL WHERE id = ?', [reviewId], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+
+    db.run('INSERT INTO admin_log (admin_id, azione, target_type, target_id) VALUES (?, ?, ?, ?)',
+      [req.userId, 'Risposta Datore Rifiutata', 'review', reviewId]);
+
+    res.json({ message: 'Risposta rifiutata' });
+  });
+});
+
+app.get('/api/admin/reviews-risposte-pending', verifyToken, isAdmin, (req, res) => {
+  db.all(
+    `SELECT r.id, r.risposta_datore, r.risposta_datore_data, r.risposta_datore_nome, r.risposta_datore_email, r.commento, s.nome AS struttura_nome
+     FROM reviews r JOIN strutture s ON r.struttura_id = s.id
+     WHERE r.risposta_datore IS NOT NULL AND r.risposta_datore_moderata = 0`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+app.put('/api/admin/strutture/info/:struttura_id', verifyToken, isAdmin, (req, res) => {
+  const { vitto_alloggio, stagionalita } = req.body;
+  const struturaId = req.params.struttura_id;
+
+  db.run('UPDATE strutture SET vitto_alloggio = ?, stagionalita = ? WHERE id = ?', [vitto_alloggio, stagionalita, struturaId], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Struttura aggiornata' });
+  });
+});
+
 // ============ ADMIN DASHBOARD ============
+
+app.get('/api/admin/reviews-pending', verifyToken, isAdmin, (req, res) => {
+  db.all(
+    `SELECT r.*, u.nome AS nome, s.nome AS struttura_nome
+     FROM reviews r
+     JOIN users u ON r.user_id = u.id
+     JOIN strutture s ON r.struttura_id = s.id
+     WHERE r.moderato = 0 AND r.respinto = 0
+     ORDER BY r.created_at DESC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+app.get('/api/admin/verificazioni-pending', verifyToken, isAdmin, (req, res) => {
+  db.all(
+    `SELECT v.*, u.nome AS nome, u.email AS email, s.nome AS struttura_nome
+     FROM verificazioni v
+     JOIN users u ON v.user_id = u.id
+     JOIN strutture s ON v.struttura_id = s.id
+     WHERE v.verificato = 0
+     ORDER BY v.created_at DESC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+app.get('/api/admin/export-csv', verifyToken, isAdmin, (req, res) => {
+  db.all(
+    `SELECT r.id, u.nome AS dipendente, s.nome AS struttura, r.valutazione_chef, r.valutazione_datore, r.salario, r.ore_lavoro, r.clima_lavoro, r.rating_medio, r.commento, r.moderato, r.respinto, r.created_at
+     FROM reviews r JOIN users u ON r.user_id = u.id JOIN strutture s ON r.struttura_id = s.id
+     ORDER BY r.created_at DESC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      const header = 'ID,Dipendente,Struttura,Chef,Datore,Salario,Ore,Clima,RatingMedio,Commento,Approvato,Respinto,Data\n';
+      const csv = rows.map(r => [r.id, r.dipendente, r.struttura, r.valutazione_chef, r.valutazione_datore, r.salario, r.ore_lavoro, r.clima_lavoro, r.rating_medio, `"${(r.commento || '').replace(/"/g, '""')}"`, r.moderato, r.respinto, r.created_at].join(',')).join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=trustourant-reviews.csv');
+      res.send(header + csv);
+    }
+  );
+});
 
 app.get('/api/admin/dashboard', verifyToken, isAdmin, (req, res) => {
   db.get('SELECT COUNT(*) as pending FROM reviews WHERE moderato = 0 AND respinto = 0', (err, pending) => {
     db.get('SELECT COUNT(*) as total FROM reviews WHERE moderato = 1 AND respinto = 0', (err, total) => {
       db.get('SELECT COUNT(*) as rejected FROM reviews WHERE respinto = 1', (err, rejected) => {
         db.get('SELECT COUNT(*) as bannati FROM users WHERE bannato = 1', (err, bannati) => {
-          db.all('SELECT azione, COUNT(*) as count FROM admin_log WHERE admin_id = ? GROUP BY azione ORDER BY count DESC LIMIT 10', [req.userId], (err, stats) => {
-            res.json({
-              reviews_pending: pending?.pending || 0,
-              reviews_total: total?.total || 0,
-              reviews_rejected: rejected?.rejected || 0,
-              users_banned: bannati?.bannati || 0,
-              admin_stats: stats || []
+          db.get('SELECT COUNT(*) as pending FROM reviews WHERE risposta_datore IS NOT NULL AND risposta_datore_moderata = 0', (err, rispostePending) => {
+            db.all('SELECT azione, COUNT(*) as count FROM admin_log WHERE admin_id = ? GROUP BY azione ORDER BY count DESC LIMIT 10', [req.userId], (err, stats) => {
+              res.json({
+                reviews_pending: pending?.pending || 0,
+                reviews_total: total?.total || 0,
+                reviews_rejected: rejected?.rejected || 0,
+                users_banned: bannati?.bannati || 0,
+                risposte_datore_pending: rispostePending?.pending || 0,
+                admin_stats: stats || []
+              });
             });
           });
         });
