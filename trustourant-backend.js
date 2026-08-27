@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const path = require('path');
 
 const app = express();
+app.set('trust proxy', 1); // Necessario su Render (e altri hosting simili) perché il sito gira dietro un proxy — senza questo, il limite tentativi login non riesce a identificare correttamente i visitatori
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'trustourant-secret-key-change-in-production';
 if (!process.env.JWT_SECRET) {
