@@ -815,6 +815,27 @@ app.get('/api/admin/dashboard', verifyToken, isAdmin, (req, res) => {
 
 // ============ STATISTICHE ============
 
+app.get('/api/classifica', (req, res) => {
+  const tipo = req.query.tipo === 'peggiori' ? 'ASC' : 'DESC';
+  const regione = req.query.regione;
+  const MIN_RECENSIONI = 3;
+
+  let query = `SELECT * FROM strutture WHERE bloccata = 0 AND num_reviews >= ?`;
+  const params = [MIN_RECENSIONI];
+
+  if (regione) {
+    query += ' AND regione = ?';
+    params.push(regione);
+  }
+
+  query += ` ORDER BY rating ${tipo} LIMIT 50`;
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
 app.get('/api/stats', (req, res) => {
   db.get('SELECT COUNT(*) as num_strutture FROM strutture WHERE bloccata = 0', (err, strutture) => {
     db.get('SELECT COUNT(*) as num_reviews FROM reviews WHERE moderato = 1 AND respinto = 0', (err, reviews) => {

@@ -439,6 +439,7 @@
       <div class="logo">🍽️ TrustOurant Fase 3</div>
       <nav id="mainNav">
         <button class="nav-btn active" data-tab="ricerca">Ricerca</button>
+        <button class="nav-btn" data-tab="classifica">Classifica</button>
         <button class="nav-btn" data-tab="statistiche">Statistiche</button>
         <button class="nav-btn" data-tab="verificazione">Verificazione</button>
         <button class="nav-btn" data-tab="mie-review">Le Mie Review</button>
@@ -541,6 +542,19 @@
             <p>Usa i filtri sopra per trovare le strutture</p>
           </div>
         </div>
+      </div>
+
+      <!-- Classifica -->
+      <div id="classificaTab" class="section-tab">
+        <h2 style="color: white; margin-bottom: 10px;">Classifica Strutture</h2>
+        <p style="color: #cbd5e1; margin-bottom: 20px; font-size: 14px;">Basata sulle recensioni pubblicate dai dipendenti. Solo strutture con almeno 3 recensioni.</p>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap;">
+          <button id="btnTopMigliori" class="submit-btn" style="width: auto; padding: 10px 20px;">🏆 Top 50 Migliori</button>
+          <button id="btnTopPeggiori" class="submit-btn" style="width: auto; padding: 10px 20px; background: #6b7280;">📉 Le Più Criticate</button>
+        </div>
+
+        <div id="classificaList"></div>
       </div>
 
       <!-- Statistiche -->
@@ -669,6 +683,8 @@
         document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
         document.getElementById('searchBtn').addEventListener('click', () => this.searchStrutture());
         document.getElementById('verificazioneForm').addEventListener('submit', (e) => this.handleVerificazione(e));
+        document.getElementById('btnTopMigliori').addEventListener('click', () => this.loadClassifica('migliori'));
+        document.getElementById('btnTopPeggiori').addEventListener('click', () => this.loadClassifica('peggiori'));
 
         // Tabs
         document.querySelectorAll('#mainNav .nav-btn').forEach(btn => {
@@ -682,6 +698,9 @@
 
             if (tab === 'statistiche') {
               setTimeout(() => this.loadStatistiche(), 300);
+            }
+            if (tab === 'classifica') {
+              this.loadClassifica('migliori');
             }
           });
         });
@@ -1053,6 +1072,44 @@
           setTimeout(() => this.viewStruttura(struturaId), 1500);
         } catch (err) {
           this.showAlert('searchAlert', err.message, 'error');
+        }
+      },
+
+      async loadClassifica(tipo) {
+        document.getElementById('btnTopMigliori').style.background = tipo === 'migliori' ? '#ec4899' : '#6b7280';
+        document.getElementById('btnTopPeggiori').style.background = tipo === 'peggiori' ? '#ec4899' : '#6b7280';
+
+        const list = document.getElementById('classificaList');
+        list.innerHTML = '<div style="text-align:center; color:#cbd5e1; padding:20px;">Caricamento...</div>';
+
+        try {
+          const res = await fetch(`${API_URL}/classifica?tipo=${tipo}`);
+          const strutture = await res.json();
+
+          if (!strutture || strutture.length === 0) {
+            list.innerHTML = '<div style="text-align:center; color:#cbd5e1; padding:20px;">Nessuna struttura con abbastanza recensioni ancora.</div>';
+            return;
+          }
+
+          list.innerHTML = strutture.map((s, i) => {
+            const stars = '★'.repeat(Math.round(s.rating)) + '☆'.repeat(5 - Math.round(s.rating));
+            return `
+              <div class="struttura-card" style="cursor: pointer; display: flex; align-items: center; gap: 15px;" onclick="app.viewStruttura(${s.id})">
+                <div style="font-size: 22px; font-weight: 700; color: #ec4899; min-width: 40px;">#${i + 1}</div>
+                <div style="flex: 1;">
+                  <h3 style="margin: 0;">${s.nome}</h3>
+                  <div style="color: #6b7280; font-size: 13px;">${s.città}, ${s.provincia}</div>
+                  <div class="rating">
+                    <span class="stars">${stars}</span>
+                    <span class="rating-value">${s.rating.toFixed(1)}</span>
+                  </div>
+                  <div style="font-size: 12px; color: #9ca3af;">${s.num_reviews} review</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (err) {
+          list.innerHTML = '<div style="text-align:center; color:#f87171; padding:20px;">Errore di caricamento.</div>';
         }
       },
 
