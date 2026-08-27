@@ -17,7 +17,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'trustourant-secret-key-change-in-p
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️  ATTENZIONE: JWT_SECRET non impostato nelle variabili d\'ambiente — sto usando un valore di sicurezza temporaneo. Aggiungi JWT_SECRET su Render il prima possibile.');
 }
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://marinacci.github.io/trustourant/';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://trustourant.it/';
 
 // Configurazione Email (Nodemailer)
 const transporter = nodemailer.createTransport({
