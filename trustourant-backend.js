@@ -236,7 +236,7 @@ app.post('/api/auth/register', async (req, res) => {
             <li>Scrivere review sulla tua esperienza</li>
             <li>Richiedere il badge ✓ Verificato</li>
           </ul>
-          <p><strong>Accedi qui:</strong> https://trustourant.netlify.app</p>
+          <p><strong>Accedi qui:</strong> ${FRONTEND_URL}</p>
           <p>Grazie per aver scelto TrustOurant!</p>
         `;
 
