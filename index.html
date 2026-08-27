@@ -708,6 +708,15 @@
       token: localStorage.getItem('token'),
       user: JSON.parse(localStorage.getItem('user') || 'null'),
 
+      // Trasforma testo scritto dagli utenti in testo "sicuro" da mostrare a schermo,
+      // impedendo che qualcuno possa nascondere codice dannoso dentro una recensione
+      esc(testo) {
+        if (testo === null || testo === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(testo);
+        return div.innerHTML;
+      },
+
       init() {
         this.setupEventListeners();
         this.updateUI();
@@ -906,10 +915,10 @@
               const stars = '★'.repeat(Math.round(s.rating)) + '☆'.repeat(5 - Math.round(s.rating));
               html += `
                 <div class="struttura-card" style="cursor: pointer;" onclick="app.viewStruttura(${s.id})">
-                  <h3>${s.nome}</h3>
+                  <h3>${app.esc(s.nome)}</h3>
                   <div class="struttura-info">
                     <div><strong>${s.tipo}</strong></div>
-                    <div>${s.città}, ${s.provincia}</div>
+                    <div>${app.esc(s.città)}, ${app.esc(s.provincia)}</div>
                   </div>
                   <div class="rating">
                     <span class="stars">${stars}</span>
@@ -1045,25 +1054,25 @@
               ${data.reviews.map(r => `
                 <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ec4899;">
                   <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <strong style="color: #1f2937;">${r.nome}</strong>
+                    <strong style="color: #1f2937;">${app.esc(r.nome)}</strong>
                     <span style="color: #9ca3af; font-size: 12px;">${new Date(r.created_at).toLocaleDateString('it-IT')}</span>
                   </div>
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; font-size: 13px; color: #6b7280;">
                     <div>Responsabile diretto: ★ ${r.valutazione_chef}</div>
                     <div>Datore: ★ ${r.valutazione_datore}</div>
                     <div>Clima: ★ ${r.clima_lavoro}</div>
-                    ${r.salario ? `<div>Salario: ${r.salario}</div>` : ''}
-                    ${r.ore_lavoro ? `<div>Ore: ${r.ore_lavoro}</div>` : ''}
+                    ${r.salario ? `<div>Salario: ${app.esc(r.salario)}</div>` : ''}
+                    ${r.ore_lavoro ? `<div>Ore: ${app.esc(r.ore_lavoro)}</div>` : ''}
                   </div>
-                  ${r.commento ? `<div style="color: #4b5563; margin-top: 10px;">${r.commento}</div>` : ''}
-                  ${r.consiglio_direzione ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">💡 Consiglio alla direzione:</strong><div style="color: #4b5563;">${r.consiglio_direzione}</div></div>` : ''}
-                  ${r.rifaresti ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">👍 Cosa rifarebbe volentieri:</strong><div style="color: #4b5563;">${r.rifaresti}</div></div>` : ''}
-                  ${r.colloquio_info ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">🎤 Come è il colloquio:</strong><div style="color: #4b5563;">${r.colloquio_info}</div></div>` : ''}
+                  ${r.commento ? `<div style="color: #4b5563; margin-top: 10px;">${app.esc(r.commento)}</div>` : ''}
+                  ${r.consiglio_direzione ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">💡 Consiglio alla direzione:</strong><div style="color: #4b5563;">${app.esc(r.consiglio_direzione)}</div></div>` : ''}
+                  ${r.rifaresti ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">👍 Cosa rifarebbe volentieri:</strong><div style="color: #4b5563;">${app.esc(r.rifaresti)}</div></div>` : ''}
+                  ${r.colloquio_info ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">🎤 Come è il colloquio:</strong><div style="color: #4b5563;">${app.esc(r.colloquio_info)}</div></div>` : ''}
                   ${r.consiglierebbe !== null && r.consiglierebbe !== undefined ? `<div style="margin-top: 12px; font-weight: 600; color: ${r.consiglierebbe === 1 ? '#16a34a' : '#dc2626'};">${r.consiglierebbe === 1 ? '✓ Consiglierebbe questa struttura a un amico' : '✗ Non consiglierebbe questa struttura a un amico'}</div>` : ''}
                   ${r.risposta_datore && r.risposta_datore_moderata === 1 ? `
                   <div style="margin-top: 15px; background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 12px 15px; border-radius: 6px;">
                     <strong style="color: #0369a1; font-size: 13px;">🏢 Risposta della struttura:</strong>
-                    <div style="color: #1e3a5f; margin-top: 5px;">${r.risposta_datore}</div>
+                    <div style="color: #1e3a5f; margin-top: 5px;">${app.esc(r.risposta_datore)}</div>
                   </div>
                   ` : `
                   <div style="margin-top: 10px;">
@@ -1188,8 +1197,8 @@
               <div class="struttura-card" style="cursor: pointer; display: flex; align-items: center; gap: 15px;" onclick="app.viewStruttura(${s.id})">
                 <div style="font-size: 22px; font-weight: 700; color: #ec4899; min-width: 40px;">#${i + 1}</div>
                 <div style="flex: 1;">
-                  <h3 style="margin: 0;">${s.nome}</h3>
-                  <div style="color: #6b7280; font-size: 13px;">${s.città}, ${s.provincia}</div>
+                  <h3 style="margin: 0;">${app.esc(s.nome)}</h3>
+                  <div style="color: #6b7280; font-size: 13px;">${app.esc(s.città)}, ${app.esc(s.provincia)}</div>
                   <div class="rating">
                     <span class="stars">${stars}</span>
                     <span class="rating-value">${s.rating.toFixed(1)}</span>
@@ -1301,7 +1310,7 @@
           strutture.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.id;
-            opt.textContent = `${s.nome} (${s.città}, ${s.provincia})`;
+            opt.textContent = `${s.nome} (${s.città}, ${s.provincia})`; // textContent è già sicuro di suo, nessuna modifica necessaria qui
             select.appendChild(opt);
           });
         } catch (err) {
@@ -1356,7 +1365,7 @@
               const testo = v.verificato === 1 ? '✓ Verificato' : '⏳ In attesa di revisione';
               html += `
                 <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${v.verificato === 1 ? '#10b981' : '#fbbf24'};">
-                  <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">${v.posizione}</div>
+                  <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">${app.esc(v.posizione)}</div>
                   <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">Periodo: ${v.periodo_inizio} ${v.periodo_fine ? ' - ' + v.periodo_fine : ''}</div>
                   <span class="status-badge ${badge}">${testo}</span>
                 </div>
@@ -1387,7 +1396,7 @@
                 <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
                   ${r.moderato === 1 ? '✓ Pubblicata' : '⏳ In moderazione'}
                 </div>
-                <div style="color: #4b5563; margin-top: 10px;">${r.commento}</div>
+                <div style="color: #4b5563; margin-top: 10px;">${app.esc(r.commento)}</div>
               </div>
             `).join('');
           }

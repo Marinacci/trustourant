@@ -2,6 +2,7 @@
 // Aggiunge: Email Notifications, Admin Dashboard, Ban Users, Export Data
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -12,7 +13,10 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = 'trustourant-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'trustourant-secret-key-change-in-production';
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  ATTENZIONE: JWT_SECRET non impostato nelle variabili d\'ambiente — sto usando un valore di sicurezza temporaneo. Aggiungi JWT_SECRET su Render il prima possibile.');
+}
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://marinacci.github.io/trustourant/';
 
 // Configurazione Email (Nodemailer)
@@ -29,6 +33,15 @@ const transporter = nodemailer.createTransport({
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Limite tentativi: max 8 tentativi ogni 15 minuti per indirizzo IP, sugli endpoint più sensibili
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  message: { error: 'Troppi tentativi. Riprova tra qualche minuto.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // Database SQLite
 const DB_PATH = process.env.DB_PATH || './trustourant.db';
@@ -204,7 +217,7 @@ const sendEmail = async (to, subject, html) => {
 
 // ============ AUTENTICAZIONE ============
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', loginLimiter, async (req, res) => {
   try {
     const { email, password, nome } = req.body;
 
@@ -255,7 +268,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -283,7 +296,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/richiedi-reset-password', async (req, res) => {
+app.post('/api/auth/richiedi-reset-password', loginLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email obbligatoria' });
 
