@@ -15,6 +15,7 @@ console.log('\n>>> TrustOurant importer VERSIONE 5 (ripresa automatica) <<<\n');
 
 const REGIONI = [
   'Trentino-Alto Adige/Südtirol',
+  'Umbria',
 ];
 
 const TIPI = [
