@@ -472,6 +472,47 @@
             <input type="password" id="loginPassword" required>
           </div>
           <button type="submit" class="submit-btn">Accedi</button>
+          <p style="text-align: center; margin-top: 15px;">
+            <a href="#" onclick="app.showSection('forgotPassword'); return false;" style="color: #ec4899; font-size: 14px; text-decoration: underline;">Password dimenticata?</a>
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Password dimenticata -->
+    <div id="forgotPasswordSection" class="section">
+      <div class="auth-container">
+        <h1>Password Dimenticata</h1>
+        <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Inserisci la tua email: ti manderemo un link per scegliere una nuova password.</p>
+        <div id="forgotPasswordAlert" class="alert"></div>
+        <form id="forgotPasswordForm">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="forgotPasswordEmail" required>
+          </div>
+          <button type="submit" class="submit-btn">Invia Link di Reset</button>
+        </form>
+        <p style="text-align: center; margin-top: 15px;">
+          <a href="#" onclick="app.showSection('login'); return false;" style="color: #ec4899; font-size: 14px; text-decoration: underline;">Torna al Login</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Reset password (si apre dal link ricevuto via email) -->
+    <div id="resetPasswordSection" class="section">
+      <div class="auth-container">
+        <h1>Scegli una Nuova Password</h1>
+        <div id="resetPasswordAlert" class="alert"></div>
+        <form id="resetPasswordForm">
+          <div class="form-group">
+            <label>Nuova Password</label>
+            <input type="password" id="newPassword" minlength="6" required>
+          </div>
+          <div class="form-group">
+            <label>Conferma Nuova Password</label>
+            <input type="password" id="confirmNewPassword" minlength="6" required>
+          </div>
+          <button type="submit" class="submit-btn">Reimposta Password</button>
         </form>
       </div>
     </div>
@@ -670,6 +711,12 @@
       init() {
         this.setupEventListeners();
         this.updateUI();
+
+        // Se l'utente arriva dal link ricevuto via email, mostra direttamente la pagina "Reimposta Password"
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('reset_token')) {
+          this.showSection('resetPassword');
+        }
       },
 
       setupEventListeners() {
@@ -681,6 +728,8 @@
         // Forms
         document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
         document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
+        document.getElementById('forgotPasswordForm').addEventListener('submit', (e) => this.handleForgotPassword(e));
+        document.getElementById('resetPasswordForm').addEventListener('submit', (e) => this.handleResetPassword(e));
         document.getElementById('searchBtn').addEventListener('click', () => this.searchStrutture());
         document.getElementById('verificazioneForm').addEventListener('submit', (e) => this.handleVerificazione(e));
         document.getElementById('btnTopMigliori').addEventListener('click', () => this.loadClassifica('migliori'));
@@ -730,12 +779,54 @@
       },
 
       showSection(section) {
-        if (section === 'login') {
-          document.getElementById('loginSection').classList.add('active');
-          document.getElementById('registerSection').classList.remove('active');
-        } else if (section === 'register') {
-          document.getElementById('loginSection').classList.remove('active');
-          document.getElementById('registerSection').classList.add('active');
+        document.querySelectorAll('#loginSection, #registerSection, #forgotPasswordSection, #resetPasswordSection').forEach(s => s.classList.remove('active'));
+        const map = { login: 'loginSection', register: 'registerSection', forgotPassword: 'forgotPasswordSection', resetPassword: 'resetPasswordSection' };
+        if (map[section]) document.getElementById(map[section]).classList.add('active');
+      },
+
+      async handleForgotPassword(e) {
+        e.preventDefault();
+        const email = document.getElementById('forgotPasswordEmail').value;
+        try {
+          const res = await fetch(`${API_URL}/auth/richiedi-reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const data = await res.json();
+          this.showAlert('forgotPasswordAlert', data.message, 'success');
+        } catch (err) {
+          this.showAlert('forgotPasswordAlert', 'Errore di connessione, riprova.', 'error');
+        }
+      },
+
+      async handleResetPassword(e) {
+        e.preventDefault();
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('reset_token');
+
+        if (newPassword !== confirmNewPassword) {
+          this.showAlert('resetPasswordAlert', 'Le due password non coincidono.', 'error');
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, nuovaPassword: newPassword })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          this.showAlert('resetPasswordAlert', data.message + ' Verrai reindirizzato al login...', 'success');
+          setTimeout(() => {
+            window.location.href = window.location.pathname;
+          }, 2500);
+        } catch (err) {
+          this.showAlert('resetPasswordAlert', err.message, 'error');
         }
       },
 

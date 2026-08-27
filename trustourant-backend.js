@@ -7,11 +7,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const sqlite3 = require('sqlite3').verbose();
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = 'trustourant-secret-key-change-in-production';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://marinacci.github.io/trustourant/';
 
 // Configurazione Email (Nodemailer)
 const transporter = nodemailer.createTransport({
@@ -168,6 +170,8 @@ aggiungiColonnaSeManca('reviews', 'risposta_datore_data', 'DATETIME');
 aggiungiColonnaSeManca('reviews', 'risposta_datore_moderata', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('reviews', 'risposta_datore_nome', 'TEXT');
 aggiungiColonnaSeManca('reviews', 'risposta_datore_email', 'TEXT');
+aggiungiColonnaSeManca('users', 'reset_token', 'TEXT');
+aggiungiColonnaSeManca('users', 'reset_token_scadenza', 'DATETIME');
 
 // Imposta l'account amministratore principale (unico account con accesso al pannello admin)
 setTimeout(() => {
@@ -277,6 +281,60 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+app.post('/api/auth/richiedi-reset-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email obbligatoria' });
+
+  db.get('SELECT id, nome FROM users WHERE email = ?', [email], async (err, user) => {
+    // Rispondiamo sempre allo stesso modo, anche se l'email non esiste, per non far capire a un estraneo quali email sono registrate
+    if (err || !user) {
+      return res.json({ message: 'Se l\'indirizzo è registrato, riceverai una email con le istruzioni.' });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const scadenza = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 ora
+
+    db.run('UPDATE users SET reset_token = ?, reset_token_scadenza = ? WHERE id = ?', [resetToken, scadenza, user.id], async (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const resetLink = `${FRONTEND_URL}?reset_token=${resetToken}`;
+      await sendEmail(
+        email,
+        'TrustOurant - Reimposta la tua password',
+        `<div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+          <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
+          <p>Ciao ${user.nome},</p>
+          <p>Hai richiesto di reimpostare la tua password. Clicca sul pulsante qui sotto per sceglierne una nuova (il link è valido per 1 ora):</p>
+          <a href="${resetLink}" style="display: inline-block; background: #ec4899; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin: 20px 0;">Reimposta Password</a>
+          <p style="color: #6b7280; font-size: 13px;">Se non hai richiesto tu questa modifica, ignora semplicemente questa email: la tua password attuale resterà invariata.</p>
+        </div>`
+      );
+
+      res.json({ message: 'Se l\'indirizzo è registrato, riceverai una email con le istruzioni.' });
+    });
+  });
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, nuovaPassword } = req.body;
+  if (!token || !nuovaPassword) return res.status(400).json({ error: 'Dati mancanti' });
+  if (nuovaPassword.length < 6) return res.status(400).json({ error: 'La password deve avere almeno 6 caratteri' });
+
+  db.get('SELECT id, reset_token_scadenza FROM users WHERE reset_token = ?', [token], async (err, user) => {
+    if (err || !user) return res.status(400).json({ error: 'Link non valido o già utilizzato' });
+
+    if (new Date(user.reset_token_scadenza) < new Date()) {
+      return res.status(400).json({ error: 'Link scaduto. Richiedi un nuovo reset password.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(nuovaPassword, 10);
+    db.run('UPDATE users SET password = ?, reset_token = NULL, reset_token_scadenza = NULL WHERE id = ?', [hashedPassword, user.id], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Password reimpostata con successo. Ora puoi accedere con la nuova password.' });
+    });
+  });
 });
 
 const verifyToken = (req, res, next) => {
