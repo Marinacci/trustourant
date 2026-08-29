@@ -140,6 +140,20 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // Tabella account aziendali (titolari che rivendicano la propria struttura per rispondere alle recensioni)
+  db.run(`CREATE TABLE IF NOT EXISTS business_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    struttura_id INTEGER NOT NULL,
+    nome_referente TEXT,
+    ruolo TEXT,
+    verificato INTEGER DEFAULT 0,
+    metodo_verifica TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(struttura_id) REFERENCES strutture(id)
+  )`);
+
   // Tabella admin actions log
   db.run(`CREATE TABLE IF NOT EXISTS admin_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -748,60 +762,164 @@ app.post('/api/admin/strutture/blocca/:struttura_id', verifyToken, isAdmin, (req
 });
 
 // Chiunque dichiari di essere la struttura può rispondere a una recensione — la risposta resta nascosta finché l'admin non la approva
-app.post('/api/reviews/:review_id/rispondi', (req, res) => {
-  const { risposta, nome, email } = req.body;
+// ============ ACCOUNT AZIENDALI (per rispondere alle recensioni) ============
+
+function estraiDominio(url) {
+  if (!url) return null;
+  try {
+    let pulito = url.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+    return pulito || null;
+  } catch { return null; }
+}
+
+app.post('/api/business/registrati', async (req, res) => {
+  const { email, password, struttura_id, nome_referente, ruolo } = req.body;
+
+  if (!email || !password || !struttura_id) return res.status(400).json({ error: 'Email, password e struttura sono obbligatori' });
+  if (password.length < 6) return res.status(400).json({ error: 'La password deve avere almeno 6 caratteri' });
+
+  db.get('SELECT id, nome, sito_web FROM strutture WHERE id = ?', [struttura_id], async (err, struttura) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!struttura) return res.status(404).json({ error: 'Struttura non trovata' });
+
+    db.get('SELECT id FROM business_accounts WHERE email = ?', [email], async (err, esistente) => {
+      if (esistente) return res.status(400).json({ error: 'Esiste già un account aziendale con questa email' });
+
+      // Verifica automatica: l'email di registrazione corrisponde al dominio del sito web della struttura?
+      const dominioEmail = email.split('@')[1]?.toLowerCase();
+      const dominioStruttura = estraiDominio(struttura.sito_web);
+      const verificaAutomatica = dominioStruttura && dominioEmail === dominioStruttura;
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      db.run(
+        'INSERT INTO business_accounts (email, password, struttura_id, nome_referente, ruolo, verificato, metodo_verifica) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [email, hashedPassword, struttura_id, nome_referente || null, ruolo || null, verificaAutomatica ? 1 : 0, verificaAutomatica ? 'dominio_email_automatico' : null],
+        async function(err) {
+          if (err) return res.status(500).json({ error: err.message });
+
+          if (verificaAutomatica) {
+            await sendEmail(email, 'TrustOurant - Account aziendale verificato', `
+              <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+                <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
+                <p>Ciao,</p>
+                <p>Il tuo account per <strong>${struttura.nome}</strong> è stato verificato automaticamente, perché l'email corrisponde al sito web ufficiale della struttura.</p>
+                <p>Puoi già accedere e rispondere alle recensioni.</p>
+              </div>`);
+            return res.json({ message: 'Account creato e verificato automaticamente! Ora puoi accedere.', verificato: true });
+          } else {
+            await sendEmail(email, 'TrustOurant - Richiesta account aziendale ricevuta', `
+              <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+                <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
+                <p>Ciao,</p>
+                <p>Abbiamo ricevuto la tua richiesta di account aziendale per <strong>${struttura.nome}</strong>.</p>
+                <p>Il nostro team verificherà manualmente la richiesta prima di attivarla, per garantire che solo il vero titolare possa rispondere alle recensioni. Riceverai una email di conferma appena verificato.</p>
+              </div>`);
+            return res.json({ message: 'Richiesta inviata. Un amministratore verificherà il tuo account a breve.', verificato: false });
+          }
+        }
+      );
+    });
+  });
+});
+
+app.post('/api/business/login', loginLimiter, (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email e password obbligatorie' });
+
+  db.get('SELECT ba.*, s.nome AS struttura_nome FROM business_accounts ba JOIN strutture s ON ba.struttura_id = s.id WHERE ba.email = ?', [email], async (err, account) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!account) return res.status(401).json({ error: 'Email o password errati' });
+
+    const passwordValida = await bcrypt.compare(password, account.password);
+    if (!passwordValida) return res.status(401).json({ error: 'Email o password errati' });
+
+    const token = jwt.sign({ businessId: account.id, struttura_id: account.struttura_id }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({
+      token,
+      business: { id: account.id, email: account.email, struttura_id: account.struttura_id, struttura_nome: account.struttura_nome, nome_referente: account.nome_referente, verificato: account.verificato === 1 }
+    });
+  });
+});
+
+const verifyBusinessToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token mancante' });
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err || !decoded.businessId) return res.status(401).json({ error: 'Token non valido' });
+    req.businessId = decoded.businessId;
+    req.businessStrutturaId = decoded.struttura_id;
+    next();
+  });
+};
+
+app.post('/api/reviews/:review_id/rispondi', verifyBusinessToken, (req, res) => {
+  const { risposta } = req.body;
   const reviewId = req.params.review_id;
 
   if (!risposta || !risposta.trim()) return res.status(400).json({ error: 'Risposta obbligatoria' });
-  if (!nome || !nome.trim()) return res.status(400).json({ error: 'Nome della struttura obbligatorio' });
 
-  db.run(
-    'UPDATE reviews SET risposta_datore = ?, risposta_datore_data = CURRENT_TIMESTAMP, risposta_datore_moderata = 0, risposta_datore_nome = ?, risposta_datore_email = ? WHERE id = ?',
-    [risposta, nome, email || null, reviewId],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(404).json({ error: 'Recensione non trovata' });
-      res.json({ message: 'Risposta inviata, in attesa di approvazione' });
-    }
-  );
-});
+  db.get('SELECT * FROM business_accounts WHERE id = ?', [req.businessId], (err, account) => {
+    if (err || !account) return res.status(401).json({ error: 'Account non trovato' });
+    if (account.verificato !== 1) return res.status(403).json({ error: 'Il tuo account non è ancora verificato. Attendi la conferma dell\'amministratore.' });
 
-app.post('/api/admin/reviews/rispondi/approva/:review_id', verifyToken, isAdmin, (req, res) => {
-  const reviewId = req.params.review_id;
+    db.get('SELECT struttura_id FROM reviews WHERE id = ?', [reviewId], (err, review) => {
+      if (err || !review) return res.status(404).json({ error: 'Recensione non trovata' });
+      if (review.struttura_id !== account.struttura_id) return res.status(403).json({ error: 'Puoi rispondere solo alle recensioni della tua struttura' });
 
-  db.run('UPDATE reviews SET risposta_datore_moderata = 1 WHERE id = ?', [reviewId], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-
-    db.run('INSERT INTO admin_log (admin_id, azione, target_type, target_id) VALUES (?, ?, ?, ?)',
-      [req.userId, 'Risposta Datore Approvata', 'review', reviewId]);
-
-    res.json({ message: 'Risposta approvata e pubblicata' });
+      db.run(
+        'UPDATE reviews SET risposta_datore = ?, risposta_datore_data = CURRENT_TIMESTAMP, risposta_datore_moderata = 1, risposta_datore_nome = ? WHERE id = ?',
+        [risposta, account.nome_referente || account.email, reviewId],
+        function(err) {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ message: 'Risposta pubblicata' });
+        }
+      );
+    });
   });
 });
 
-app.post('/api/admin/reviews/rispondi/rifiuta/:review_id', verifyToken, isAdmin, (req, res) => {
-  const reviewId = req.params.review_id;
-
-  db.run('UPDATE reviews SET risposta_datore = NULL, risposta_datore_moderata = 0, risposta_datore_nome = NULL, risposta_datore_email = NULL WHERE id = ?', [reviewId], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-
-    db.run('INSERT INTO admin_log (admin_id, azione, target_type, target_id) VALUES (?, ?, ?, ?)',
-      [req.userId, 'Risposta Datore Rifiutata', 'review', reviewId]);
-
-    res.json({ message: 'Risposta rifiutata' });
-  });
-});
-
-app.get('/api/admin/reviews-risposte-pending', verifyToken, isAdmin, (req, res) => {
+app.get('/api/admin/business-pending', verifyToken, isAdmin, (req, res) => {
   db.all(
-    `SELECT r.id, r.risposta_datore, r.risposta_datore_data, r.risposta_datore_nome, r.risposta_datore_email, r.commento, s.nome AS struttura_nome
-     FROM reviews r JOIN strutture s ON r.struttura_id = s.id
-     WHERE r.risposta_datore IS NOT NULL AND r.risposta_datore_moderata = 0`,
+    `SELECT ba.id, ba.email, ba.nome_referente, ba.ruolo, ba.created_at, s.nome AS struttura_nome, s.città, s.sito_web
+     FROM business_accounts ba JOIN strutture s ON ba.struttura_id = s.id
+     WHERE ba.verificato = 0
+     ORDER BY ba.created_at DESC`,
     (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json(rows);
     }
   );
+});
+
+app.post('/api/admin/business/verifica/:id', verifyToken, isAdmin, (req, res) => {
+  const id = req.params.id;
+  db.get('SELECT email, struttura_id FROM business_accounts WHERE id = ?', [id], (err, account) => {
+    if (err || !account) return res.status(404).json({ error: 'Account non trovato' });
+
+    db.run('UPDATE business_accounts SET verificato = 1, metodo_verifica = ? WHERE id = ?', ['verifica_manuale_admin', id], async (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      await sendEmail(account.email, 'TrustOurant - Account aziendale verificato', `
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+          <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
+          <p>Il tuo account aziendale è stato verificato manualmente dal nostro team. Ora puoi accedere e rispondere alle recensioni.</p>
+        </div>`);
+
+      db.run('INSERT INTO admin_log (admin_id, azione, target_type, target_id) VALUES (?, ?, ?, ?)', [req.userId, 'Account Aziendale Verificato', 'business_account', id]);
+      res.json({ message: 'Account verificato' });
+    });
+  });
+});
+
+app.post('/api/admin/business/rifiuta/:id', verifyToken, isAdmin, (req, res) => {
+  const id = req.params.id;
+  db.run('DELETE FROM business_accounts WHERE id = ? AND verificato = 0', [id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    db.run('INSERT INTO admin_log (admin_id, azione, target_type, target_id) VALUES (?, ?, ?, ?)', [req.userId, 'Account Aziendale Rifiutato', 'business_account', id]);
+    res.json({ message: 'Richiesta rifiutata' });
+  });
 });
 
 app.put('/api/admin/strutture/info/:struttura_id', verifyToken, isAdmin, (req, res) => {

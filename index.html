@@ -444,6 +444,11 @@
         <button class="nav-btn" data-tab="verificazione">Verificazione</button>
         <button class="nav-btn" data-tab="mie-review">Le Mie Review</button>
       </nav>
+      <div id="businessNav" class="user-info" style="display: none;">
+        <span id="businessName" style="font-size: 13px;"></span>
+        <button id="businessLogoutBtn" style="font-size: 12px;">Esci (azienda)</button>
+      </div>
+      <button onclick="app.showSection('businessClaim')" style="background: none; border: 1px solid #ec4899; color: #ec4899; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 10px;">🏢 Area Aziende</button>
       <div id="userNav" class="user-info" style="display: none;">
         <span id="userName"></span>
         <span id="badgeVerificato" class="badge-verificato" style="display: none;">✓ Verificato</span>
@@ -513,6 +518,56 @@
             <input type="password" id="confirmNewPassword" minlength="6" required>
           </div>
           <button type="submit" class="submit-btn">Reimposta Password</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Area Aziende: login e rivendicazione struttura -->
+    <div id="businessClaimSection" class="section">
+      <div class="auth-container">
+        <h1>🏢 Area Aziende</h1>
+        <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Sei il titolare o direttore di una struttura? Crea un account aziendale per rispondere ufficialmente alle recensioni.</p>
+        <div id="businessAlert" class="alert"></div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <button onclick="app.showBusinessTab('login')" id="businessTabLoginBtn" class="submit-btn" style="width: auto; padding: 8px 16px; flex: 1;">Accedi</button>
+          <button onclick="app.showBusinessTab('register')" id="businessTabRegisterBtn" class="submit-btn" style="width: auto; padding: 8px 16px; flex: 1; background: #6b7280;">Rivendica struttura</button>
+        </div>
+
+        <form id="businessLoginForm">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="businessLoginEmail" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="businessLoginPassword" required>
+          </div>
+          <button type="submit" class="submit-btn">Accedi come Azienda</button>
+        </form>
+
+        <form id="businessRegisterForm" style="display: none;">
+          <div class="form-group">
+            <label>Cerca la tua struttura</label>
+            <input type="text" id="businessStrutturaSearch" placeholder="Nome della struttura..." oninput="app.searchStrutturaPerBusiness()">
+            <div id="businessStrutturaResults" style="margin-top: 8px;"></div>
+            <input type="hidden" id="businessStrutturaId">
+            <div id="businessStrutturaSelected" style="margin-top: 8px; font-weight: 600; color: #16a34a;"></div>
+          </div>
+          <div class="form-group">
+            <label>Il tuo nome e ruolo</label>
+            <input type="text" id="businessNomeReferente" placeholder="Es: Mario Rossi, Direttore" required>
+          </div>
+          <div class="form-group">
+            <label>Email aziendale</label>
+            <input type="email" id="businessRegisterEmail" required>
+            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Se corrisponde al sito web ufficiale della struttura, l'account viene verificato subito. Altrimenti lo verifichiamo manualmente entro breve.</div>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="businessRegisterPassword" minlength="6" required>
+          </div>
+          <button type="submit" class="submit-btn">Richiedi Account Aziendale</button>
         </form>
       </div>
     </div>
@@ -707,6 +762,8 @@
     const app = {
       token: localStorage.getItem('token'),
       user: JSON.parse(localStorage.getItem('user') || 'null'),
+      businessToken: localStorage.getItem('businessToken'),
+      business: JSON.parse(localStorage.getItem('business') || 'null'),
 
       // Trasforma testo scritto dagli utenti in testo "sicuro" da mostrare a schermo,
       // impedendo che qualcuno possa nascondere codice dannoso dentro una recensione
@@ -733,12 +790,15 @@
         document.querySelectorAll('#authNav .nav-btn')[0].addEventListener('click', () => this.showSection('login'));
         document.querySelectorAll('#authNav .nav-btn')[1].addEventListener('click', () => this.showSection('register'));
         document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
+        document.getElementById('businessLogoutBtn')?.addEventListener('click', () => this.businessLogout());
 
         // Forms
         document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
         document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
         document.getElementById('forgotPasswordForm').addEventListener('submit', (e) => this.handleForgotPassword(e));
         document.getElementById('resetPasswordForm').addEventListener('submit', (e) => this.handleResetPassword(e));
+        document.getElementById('businessLoginForm').addEventListener('submit', (e) => this.handleBusinessLogin(e));
+        document.getElementById('businessRegisterForm').addEventListener('submit', (e) => this.handleBusinessRegister(e));
         document.getElementById('searchBtn').addEventListener('click', () => this.searchStrutture());
         document.getElementById('verificazioneForm').addEventListener('submit', (e) => this.handleVerificazione(e));
         document.getElementById('btnTopMigliori').addEventListener('click', () => this.loadClassifica('migliori'));
@@ -785,11 +845,26 @@
           document.getElementById('userNav').style.display = 'none';
           document.getElementById('authNav').style.display = 'flex';
         }
+
+        if (this.businessToken && this.business) {
+          document.getElementById('businessNav').style.display = 'flex';
+          document.getElementById('businessName').textContent = `🏢 ${this.business.struttura_nome}${this.business.verificato ? ' ✓' : ' (in attesa di verifica)'}`;
+        } else {
+          document.getElementById('businessNav').style.display = 'none';
+        }
+      },
+
+      businessLogout() {
+        this.businessToken = null;
+        this.business = null;
+        localStorage.removeItem('businessToken');
+        localStorage.removeItem('business');
+        this.updateUI();
       },
 
       showSection(section) {
-        document.querySelectorAll('#loginSection, #registerSection, #forgotPasswordSection, #resetPasswordSection').forEach(s => s.classList.remove('active'));
-        const map = { login: 'loginSection', register: 'registerSection', forgotPassword: 'forgotPasswordSection', resetPassword: 'resetPasswordSection' };
+        document.querySelectorAll('#loginSection, #registerSection, #forgotPasswordSection, #resetPasswordSection, #businessClaimSection').forEach(s => s.classList.remove('active'));
+        const map = { login: 'loginSection', register: 'registerSection', forgotPassword: 'forgotPasswordSection', resetPassword: 'resetPasswordSection', businessClaim: 'businessClaimSection' };
         if (map[section]) document.getElementById(map[section]).classList.add('active');
       },
 
@@ -836,6 +911,89 @@
           }, 2500);
         } catch (err) {
           this.showAlert('resetPasswordAlert', err.message, 'error');
+        }
+      },
+
+      showBusinessTab(tab) {
+        document.getElementById('businessLoginForm').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('businessRegisterForm').style.display = tab === 'register' ? 'block' : 'none';
+        document.getElementById('businessTabLoginBtn').style.background = tab === 'login' ? '#ec4899' : '#6b7280';
+        document.getElementById('businessTabRegisterBtn').style.background = tab === 'register' ? '#ec4899' : '#6b7280';
+      },
+
+      async searchStrutturaPerBusiness() {
+        const nome = document.getElementById('businessStrutturaSearch').value;
+        const resultsDiv = document.getElementById('businessStrutturaResults');
+        if (nome.trim().length < 3) { resultsDiv.innerHTML = ''; return; }
+
+        try {
+          const res = await fetch(`${API_URL}/strutture?nome=${encodeURIComponent(nome)}`);
+          const strutture = await res.json();
+          resultsDiv.innerHTML = strutture.slice(0, 8).map(s => `
+            <div onclick="app.selezionaStrutturaBusiness(${s.id}, '${app.esc(s.nome).replace(/'/g, "\\'")}')" style="padding: 8px; background: #f9fafb; border-radius: 6px; margin-bottom: 4px; cursor: pointer; font-size: 14px;">
+              ${app.esc(s.nome)} — ${app.esc(s.città)}
+            </div>
+          `).join('');
+        } catch (err) { resultsDiv.innerHTML = ''; }
+      },
+
+      selezionaStrutturaBusiness(id, nome) {
+        document.getElementById('businessStrutturaId').value = id;
+        document.getElementById('businessStrutturaSelected').textContent = `✓ Struttura selezionata: ${nome}`;
+        document.getElementById('businessStrutturaResults').innerHTML = '';
+        document.getElementById('businessStrutturaSearch').value = nome;
+      },
+
+      async handleBusinessLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('businessLoginEmail').value;
+        const password = document.getElementById('businessLoginPassword').value;
+
+        try {
+          const res = await fetch(`${API_URL}/business/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          this.businessToken = data.token;
+          this.business = data.business;
+          localStorage.setItem('businessToken', data.token);
+          localStorage.setItem('business', JSON.stringify(data.business));
+
+          this.showAlert('businessAlert', data.business.verificato ? `Accesso effettuato come ${data.business.struttura_nome}` : 'Accesso effettuato — il tuo account è ancora in attesa di verifica', 'success');
+        } catch (err) {
+          this.showAlert('businessAlert', err.message, 'error');
+        }
+      },
+
+      async handleBusinessRegister(e) {
+        e.preventDefault();
+        const struttura_id = document.getElementById('businessStrutturaId').value;
+        const nome_referente = document.getElementById('businessNomeReferente').value;
+        const email = document.getElementById('businessRegisterEmail').value;
+        const password = document.getElementById('businessRegisterPassword').value;
+
+        if (!struttura_id) {
+          this.showAlert('businessAlert', 'Seleziona prima la tua struttura dall\'elenco', 'error');
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_URL}/business/registrati`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, struttura_id, nome_referente })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          this.showAlert('businessAlert', data.message, 'success');
+          if (data.verificato) this.showBusinessTab('login');
+        } catch (err) {
+          this.showAlert('businessAlert', err.message, 'error');
         }
       },
 
@@ -1071,18 +1229,20 @@
                   ${r.consiglierebbe !== null && r.consiglierebbe !== undefined ? `<div style="margin-top: 12px; font-weight: 600; color: ${r.consiglierebbe === 1 ? '#16a34a' : '#dc2626'};">${r.consiglierebbe === 1 ? '✓ Consiglierebbe questa struttura a un amico' : '✗ Non consiglierebbe questa struttura a un amico'}</div>` : ''}
                   ${r.risposta_datore && r.risposta_datore_moderata === 1 ? `
                   <div style="margin-top: 15px; background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 12px 15px; border-radius: 6px;">
-                    <strong style="color: #0369a1; font-size: 13px;">🏢 Risposta della struttura:</strong>
+                    <strong style="color: #0369a1; font-size: 13px;">🏢 Risposta della struttura ✓ Verificata:</strong>
                     <div style="color: #1e3a5f; margin-top: 5px;">${app.esc(r.risposta_datore)}</div>
+                  </div>
+                  ` : (app.business && app.business.struttura_id === id && app.business.verificato) ? `
+                  <div style="margin-top: 10px;">
+                    <a href="#" onclick="app.showRispostaForm(${r.id}); return false;" style="font-size: 13px; color: #0ea5e9; text-decoration: underline; font-weight: 600;">✓ Rispondi come struttura verificata</a>
+                    <div id="rispostaForm-${r.id}" style="display: none; margin-top: 10px; background: #f9fafb; padding: 15px; border-radius: 8px;">
+                      <textarea id="rispostaTesto-${r.id}" placeholder="La tua risposta..." style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; min-height: 60px; font-family: inherit; margin-bottom: 8px;"></textarea>
+                      <button onclick="app.inviaRisposta(${r.id})" class="submit-btn" style="padding: 8px 16px; font-size: 13px;">Invia risposta</button>
+                    </div>
                   </div>
                   ` : `
                   <div style="margin-top: 10px;">
-                    <a href="#" onclick="app.showRispostaForm(${r.id}); return false;" style="font-size: 13px; color: #6b7280; text-decoration: underline;">Sei il titolare/direttore? Rispondi a questa recensione</a>
-                    <div id="rispostaForm-${r.id}" style="display: none; margin-top: 10px; background: #f9fafb; padding: 15px; border-radius: 8px;">
-                      <input type="text" id="rispostaNome-${r.id}" placeholder="Il tuo nome e ruolo (es: Mario Rossi, Direttore)" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px;">
-                      <textarea id="rispostaTesto-${r.id}" placeholder="La tua risposta..." style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; min-height: 60px; font-family: inherit; margin-bottom: 8px;"></textarea>
-                      <button onclick="app.inviaRisposta(${r.id})" class="submit-btn" style="padding: 8px 16px; font-size: 13px;">Invia risposta</button>
-                      <div style="font-size: 11px; color: #9ca3af; margin-top: 6px;">La risposta sarà pubblicata dopo una verifica da parte del nostro team.</div>
-                    </div>
+                    <a href="#" onclick="app.showSection('businessClaim'); return false;" style="font-size: 13px; color: #6b7280; text-decoration: underline;">Sei il titolare? Rivendica questa struttura per poter rispondere</a>
                   </div>
                   `}
                 </div>
@@ -1115,25 +1275,24 @@
       },
 
       async inviaRisposta(reviewId) {
-        const nome = document.getElementById(`rispostaNome-${reviewId}`).value;
         const risposta = document.getElementById(`rispostaTesto-${reviewId}`).value;
 
-        if (!nome.trim() || !risposta.trim()) {
-          this.showAlert('searchAlert', 'Compila nome e risposta', 'error');
+        if (!risposta.trim()) {
+          this.showAlert('searchAlert', 'Scrivi una risposta', 'error');
           return;
         }
 
         try {
           const res = await fetch(`${API_URL}/reviews/${reviewId}/rispondi`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, risposta })
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.businessToken}` },
+            body: JSON.stringify({ risposta })
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
 
-          this.showAlert('searchAlert', 'Risposta inviata! Sarà visibile dopo la verifica.', 'success');
-          document.getElementById(`rispostaForm-${reviewId}`).style.display = 'none';
+          this.showAlert('searchAlert', 'Risposta pubblicata!', 'success');
+          this.viewStruttura(this.business.struttura_id);
         } catch (err) {
           this.showAlert('searchAlert', err.message, 'error');
         }
