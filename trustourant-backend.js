@@ -1059,6 +1059,83 @@ app.get('/api/stats/provincia', (req, res) => {
   );
 });
 
+// ============ GDPR: ESPORTAZIONE E CANCELLAZIONE ACCOUNT ============
+
+// Esportazione dati personali (GDPR Art. 20 - Portabilità)
+app.get('/api/users/me/export', verifyToken, (req, res) => {
+  db.get('SELECT id, nome, email, verificato, created_at FROM users WHERE id = ?', [req.userId], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+
+    db.all('SELECT * FROM reviews WHERE user_id = ? ORDER BY created_at DESC', [req.userId], (err, reviews) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      db.all('SELECT * FROM verificazioni WHERE user_id = ?', [req.userId], (err, verificazioni) => {
+        const exportData = {
+          data_esportazione: new Date().toISOString(),
+          tipo: 'Esportazione dati personali - GDPR Art. 20',
+          utente: user,
+          recensioni: reviews || [],
+          verificazioni: verificazioni || []
+        };
+
+        console.log('[GDPR EXPORT] Utente ' + req.userId + ' ha esportato i propri dati');
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename=trustourant-miei-dati.json');
+        res.send(JSON.stringify(exportData, null, 2));
+      });
+    });
+  });
+});
+
+// Cancellazione account (GDPR Art. 17 - Diritto all'oblio)
+app.delete('/api/users/me', verifyToken, (req, res) => {
+  const userId = req.userId;
+
+  db.get('SELECT id, email, nome FROM users WHERE id = ?', [userId], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+
+    db.get('SELECT id FROM users WHERE email = ?', ['anonimo@trustourant.it'], (err, anonimo) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const procediConCancellazione = (anonimoId) => {
+        db.run('UPDATE reviews SET user_id = ? WHERE user_id = ?', [anonimoId, userId], (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+
+          db.run('DELETE FROM verificazioni WHERE user_id = ?', [userId], () => {
+
+            db.run('DELETE FROM users WHERE id = ?', [userId], (err) => {
+              if (err) return res.status(500).json({ error: err.message });
+
+              console.log('[GDPR CANCELLAZIONE] Account ' + userId + ' (' + user.email + ') cancellato, recensioni anonimizzate');
+
+              res.json({
+                message: 'Account cancellato definitivamente. Le tue recensioni restano pubbliche ma anonime.'
+              });
+            });
+          });
+        });
+      };
+
+      if (anonimo) {
+        procediConCancellazione(anonimo.id);
+      } else {
+        db.run(
+          'INSERT INTO users (nome, email, password) VALUES (?, ?, ?)',
+          ['Utente Anonimo', 'anonimo@trustourant.it', 'ACCOUNT_NON_ACCESSIBILE_' + Date.now()],
+          function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            procediConCancellazione(this.lastID);
+          }
+        );
+      }
+    });
+  });
+}); 
+
+
 // ============ SERVER ============
 
 app.listen(PORT, () => {
