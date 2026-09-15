@@ -436,7 +436,8 @@
 <body>
   <header>
     <div class="container">
-      <div class="logo">🍽️ TrustOurant Fase 3</div>
+      <div class="logo">🍽️ TrustOurant</div>
+      <a href="lavoro.html" style="color: #be185d; font-weight: 700; margin: 0 12px;">Trova lavoro</a>
       <nav id="mainNav">
         <button class="nav-btn active" data-tab="ricerca">Ricerca</button>
         <button class="nav-btn" data-tab="classifica">Classifica</button>
@@ -780,6 +781,7 @@
 
         // Se l'utente arriva dal link ricevuto via email, mostra direttamente la pagina "Reimposta Password"
         const params = new URLSearchParams(window.location.search);
+        if (location.hash === '#aziende') this.showSection('businessClaim');
         if (params.get('reset_token')) {
           this.showSection('resetPassword');
         }

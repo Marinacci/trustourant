@@ -1,11 +1,12 @@
 {
   "name": "trustourant",
   "version": "1.0.0",
-  "description": "TrustOurant - Platform di recensioni per il personale dell'ospitalità italiana",
+  "description": "TrustOurant - Platform di recensioni per il personale dell'ospitalit\u00e0 italiana",
   "main": "trustourant-backend.js",
   "scripts": {
     "start": "node trustourant-backend.js",
-    "dev": "node trustourant-backend.js"
+    "dev": "node trustourant-backend.js",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "reviews",

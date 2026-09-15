@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Trova lavoro in hotel, ristoranti e bar con stipendio, orari e condizioni dichiarati. Candidati su Trustourant.">
+  <title>Lavoro nell’ospitalità · Trustourant</title>
+  <link rel="stylesheet" href="lavoro.css"><script src="lavoro.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="index.html">Trustourant<span>Il lavoro, con fiducia.</span></a><nav aria-label="Navigazione principale"><a href="index.html">Recensioni e account</a><button id="myApplications" class="secondary">Le mie candidature</button><button id="businessArea">Area aziende</button></nav></header>
+<main>
+  <section class="hero"><div><span class="eyebrow">HOTEL · RISTORANTI · BAR</span><h1>Il tuo prossimo lavoro.<br><em>A condizioni chiare.</em></h1><p>Stipendio, orari e riposi dichiarati prima di candidarti. Cerca un’opportunità nell’ospitalità e presenta la tua esperienza.</p><a class="text-link" href="#search">Esplora le opportunità ↓</a></div><aside><span class="eyebrow">PRIMA DI DIRE SÌ</span><h2>Sai già cosa aspettarti.</h2><ul><li>Retribuzione netta o lorda, sempre indicata</li><li>Ore, giorni e mensilità in ogni annuncio</li><li>Pubblicazione riservata ad aziende verificate</li></ul><small>Le condizioni sono dichiarate dall’azienda. Concorda sempre i dettagli nel colloquio e nel contratto.</small></aside></section>
+  <section id="search" aria-labelledby="searchTitle"><div class="section-heading"><div><span class="eyebrow">TROVA LA TUA OPPORTUNITÀ</span><h2 id="searchTitle">Cosa cerchi?</h2></div><span>La candidatura è gratuita.</span></div>
+  <form id="searchForm" class="filters"><label>Ruolo o struttura<input name="q" placeholder="Sous chef, receptionist…" maxlength="100"></label><label>Città o provincia<input name="luogo" placeholder="Merano, Bolzano…" maxlength="100"></label><label>Da € al mese<input name="salario_min" type="number" min="1" max="100000" placeholder="Es. 2500"></label><label>Retribuzione<select name="salario_tipo"><option value="netto">Netta</option><option value="lordo">Lorda</option></select></label><label class="check"><input name="alloggio" type="checkbox" value="1">Con alloggio</label><button type="submit">Cerca lavoro</button></form>
+  <p id="searchStatus" role="status" aria-live="polite"></p><div id="results" class="results"></div><div class="pagination"><button id="previousPage" class="secondary" hidden>← Precedenti</button><span id="pageStatus"></span><button id="nextPage" class="secondary" hidden>Successivi →</button></div></section>
+  <section class="company-banner"><div><span class="eyebrow">CERCHI PERSONALE?</span><h2>Presenta bene il lavoro che offri.</h2><p>Pubblica condizioni trasparenti e raccogli le candidature nella tua area azienda.</p></div><button id="openPublish">Gestisci i tuoi annunci →</button></section>
+</main>
+<footer><span>Trustourant · Persone e ospitalità</span><a href="privacy.html">Informativa privacy</a></footer>
+<dialog id="panel"><div class="dialog-header"><h2 id="panelTitle"></h2><button id="closePanel" class="secondary" aria-label="Chiudi finestra">Chiudi ×</button></div><div id="panelContent"></div><p id="panelStatus" role="status" aria-live="polite"></p></dialog>
+</body></html>

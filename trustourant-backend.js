@@ -14,9 +14,9 @@ const path = require('path');
 const app = express();
 app.set('trust proxy', 1); // Necessario su Render (e altri hosting simili) perché il sito gira dietro un proxy — senza questo, il limite tentativi login non riesce a identificare correttamente i visitatori
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'trustourant-secret-key-change-in-production';
-if (!process.env.JWT_SECRET) {
-  console.warn('⚠️  ATTENZIONE: JWT_SECRET non impostato nelle variabili d\'ambiente — sto usando un valore di sicurezza temporaneo. Aggiungi JWT_SECRET su Render il prima possibile.');
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET === 'trustourant-secret-key-change-in-production') {
+  throw new Error('Imposta JWT_SECRET con un segreto privato prima di avviare Trustourant.');
 }
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://trustourant.it/';
 
@@ -785,38 +785,22 @@ app.post('/api/business/registrati', async (req, res) => {
     db.get('SELECT id FROM business_accounts WHERE email = ?', [email], async (err, esistente) => {
       if (esistente) return res.status(400).json({ error: 'Esiste già un account aziendale con questa email' });
 
-      // Verifica automatica: l'email di registrazione corrisponde al dominio del sito web della struttura?
-      const dominioEmail = email.split('@')[1]?.toLowerCase();
-      const dominioStruttura = estraiDominio(struttura.sito_web);
-      const verificaAutomatica = dominioStruttura && dominioEmail === dominioStruttura;
-
       const hashedPassword = await bcrypt.hash(password, 10);
 
       db.run(
         'INSERT INTO business_accounts (email, password, struttura_id, nome_referente, ruolo, verificato, metodo_verifica) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [email, hashedPassword, struttura_id, nome_referente || null, ruolo || null, verificaAutomatica ? 1 : 0, verificaAutomatica ? 'dominio_email_automatico' : null],
+        [email, hashedPassword, struttura_id, nome_referente || null, ruolo || null, 0, null],
         async function(err) {
           if (err) return res.status(500).json({ error: err.message });
 
-          if (verificaAutomatica) {
-            await sendEmail(email, 'TrustOurant - Account aziendale verificato', `
-              <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-                <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
-                <p>Ciao,</p>
-                <p>Il tuo account per <strong>${struttura.nome}</strong> è stato verificato automaticamente, perché l'email corrisponde al sito web ufficiale della struttura.</p>
-                <p>Puoi già accedere e rispondere alle recensioni.</p>
-              </div>`);
-            return res.json({ message: 'Account creato e verificato automaticamente! Ora puoi accedere.', verificato: true });
-          } else {
-            await sendEmail(email, 'TrustOurant - Richiesta account aziendale ricevuta', `
-              <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-                <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
-                <p>Ciao,</p>
-                <p>Abbiamo ricevuto la tua richiesta di account aziendale per <strong>${struttura.nome}</strong>.</p>
-                <p>Il nostro team verificherà manualmente la richiesta prima di attivarla, per garantire che solo il vero titolare possa rispondere alle recensioni. Riceverai una email di conferma appena verificato.</p>
-              </div>`);
-            return res.json({ message: 'Richiesta inviata. Un amministratore verificherà il tuo account a breve.', verificato: false });
-          }
+          await sendEmail(email, 'TrustOurant - Richiesta account aziendale ricevuta', `
+            <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+              <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
+              <p>Ciao,</p>
+              <p>Abbiamo ricevuto la tua richiesta di account aziendale per <strong>${struttura.nome}</strong>.</p>
+              <p>Il nostro team verificherà manualmente la richiesta prima di attivarla, per garantire che solo il vero titolare possa rispondere alle recensioni. Riceverai una email di conferma appena verificato.</p>
+            </div>`);
+          return res.json({ message: 'Richiesta inviata. Un amministratore verificherà il tuo account a breve.', verificato: false });
         }
       );
     });
@@ -884,7 +868,7 @@ app.get('/api/admin/business-pending', verifyToken, isAdmin, (req, res) => {
   db.all(
     `SELECT ba.id, ba.email, ba.nome_referente, ba.ruolo, ba.created_at, s.nome AS struttura_nome, s.città, s.sito_web
      FROM business_accounts ba JOIN strutture s ON ba.struttura_id = s.id
-     WHERE ba.verificato = 0
+     WHERE ba.verificato = 0 OR ba.metodo_verifica = 'dominio_email_automatico'
      ORDER BY ba.created_at DESC`,
     (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -915,7 +899,7 @@ app.post('/api/admin/business/verifica/:id', verifyToken, isAdmin, (req, res) =>
 
 app.post('/api/admin/business/rifiuta/:id', verifyToken, isAdmin, (req, res) => {
   const id = req.params.id;
-  db.run('DELETE FROM business_accounts WHERE id = ? AND verificato = 0', [id], function(err) {
+  db.run("DELETE FROM business_accounts WHERE id = ? AND (verificato = 0 OR metodo_verifica = 'dominio_email_automatico')", [id], function(err) {
     if (err) return res.status(500).json({ error: err.message });
     db.run('INSERT INTO admin_log (admin_id, azione, target_type, target_id) VALUES (?, ?, ?, ?)', [req.userId, 'Account Aziendale Rifiutato', 'business_account', id]);
     res.json({ message: 'Richiesta rifiutata' });
@@ -1059,6 +1043,13 @@ app.get('/api/stats/provincia', (req, res) => {
   );
 });
 
+const jobs = require('./jobs')(app, db, { jwt, secret: JWT_SECRET });
+
+// Serve only explicitly public files; never expose the database or server source.
+for (const file of ['index.html', 'privacy.html', 'lavoro.html', 'lavoro.js', 'lavoro.css']) {
+  app.get('/' + file, (req, res) => res.sendFile(path.join(__dirname, file)));
+}
+
 // ============ GDPR: ESPORTAZIONE E CANCELLAZIONE ACCOUNT ============
 
 // Esportazione dati personali (GDPR Art. 20 - Portabilità)
@@ -1070,13 +1061,20 @@ app.get('/api/users/me/export', verifyToken, (req, res) => {
     db.all('SELECT * FROM reviews WHERE user_id = ? ORDER BY created_at DESC', [req.userId], (err, reviews) => {
       if (err) return res.status(500).json({ error: err.message });
 
-      db.all('SELECT * FROM verificazioni WHERE user_id = ?', [req.userId], (err, verificazioni) => {
+      db.all('SELECT * FROM verificazioni WHERE user_id = ?', [req.userId], async (err, verificazioni) => {
+        if (err) return res.status(500).json({ error: 'Esportazione non disponibile.' });
+        let candidature;
+        try {
+          await jobs.ready;
+          candidature = await jobs.all('SELECT * FROM job_applications WHERE user_id = ?', [req.userId]);
+        } catch { return res.status(500).json({ error: 'Esportazione non disponibile.' }); }
         const exportData = {
           data_esportazione: new Date().toISOString(),
           tipo: 'Esportazione dati personali - GDPR Art. 20',
           utente: user,
           recensioni: reviews || [],
-          verificazioni: verificazioni || []
+          verificazioni: verificazioni || [],
+          candidature
         };
 
         console.log('[GDPR EXPORT] Utente ' + req.userId + ' ha esportato i propri dati');
@@ -1138,10 +1136,12 @@ app.delete('/api/users/me', verifyToken, (req, res) => {
 
 // ============ SERVER ============
 
-app.listen(PORT, () => {
+if (require.main === module) jobs.ready.then(() => app.listen(PORT, () => {
   console.log(`🚀 TrustOurant Backend FASE 4 running on http://localhost:${PORT}`);
   console.log(`📧 Email notifications ACTIVE`);
   console.log(`🔐 Admin dashboard ACTIVE`);
-});
+})).catch(err => { console.error('Startup failed:', err.message); process.exitCode = 1; db.close(); });
 
 module.exports = app;
+module.exports.database = db;
+module.exports.jobsReady = jobs.ready;
