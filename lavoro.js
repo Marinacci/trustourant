@@ -7,6 +7,33 @@
   const date = value => new Date(value.replace(' ', 'T') + 'Z').toLocaleDateString('it-IT');
   const token = type => localStorage.getItem(type === 'business' ? 'businessToken' : 'token');
   let page = 1, searchVersion = 0, panelVersion = 0;
+  const demoCandidates = {
+    'demo-1': [
+      { nome:'Mario Rossi (profilo dimostrativo)', email:'mario.rossi@example.com', created_at:'2026-09-14 09:30:00', messaggio:'Sous chef con esperienza in hotel quattro stelle, gestione della brigata e cucina italiana. Disponibile da ottobre. Questo è un testo dimostrativo.' },
+      { nome:'Giulia Bianchi (profilo dimostrativo)', email:'giulia.bianchi@example.com', created_at:'2026-09-15 07:45:00', messaggio:'Esperienza in ristorazione gourmet, pasticceria e organizzazione del servizio. Disponibile per colloquio. Questo è un testo dimostrativo.' },
+      { nome:'Luca Verdi (profilo dimostrativo)', email:'luca.verdi@example.com', created_at:'2026-09-15 08:20:00', messaggio:'Cinque anni di esperienza tra Alto Adige e Trentino, conoscenza HACCP e turni di brigata. Questo è un testo dimostrativo.' }
+    ],
+    'demo-2': [
+      { nome:'Sara Neri (profilo dimostrativo)', email:'sara.neri@example.com', created_at:'2026-09-12 10:15:00', messaggio:'Chef de rang con inglese e tedesco, esperienza nel servizio a cinque stelle. Questo è un testo dimostrativo.' }
+    ]
+  };
+  const demoExpiry = () => new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 19).replace('T', ' ');
+  const demoSeed = () => [
+    { id:'demo-1', titolo:'Sous chef', candidature:3, stato:'aperto', scadenza:demoExpiry() },
+    { id:'demo-2', titolo:'Chef de rang', candidature:1, stato:'chiuso', scadenza:demoExpiry() }
+  ];
+  function getDemoJobs(reset = false) {
+    if (!reset) {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('trustourantDemoJobs') || 'null');
+        if (Array.isArray(stored)) return stored;
+      } catch {}
+    }
+    const jobs = demoSeed();
+    sessionStorage.setItem('trustourantDemoJobs', JSON.stringify(jobs));
+    return jobs;
+  }
+  const saveDemoJobs = jobs => sessionStorage.setItem('trustourantDemoJobs', JSON.stringify(jobs));
   async function request(path, { type, method = 'GET', body } = {}) {
     const headers = {};
     if (type) headers.Authorization = `Bearer ${token(type) || ''}`;
@@ -89,33 +116,61 @@
     try {
       const rows = await request('/business/jobs', { type:'business' });
       if (version !== panelVersion) return;
-      $('panelContent').innerHTML = '<button id="newJob">Pubblica un annuncio</button><p class="muted">Gli annunci scadono dopo 60 giorni. Puoi chiuderli prima quando trovi la persona giusta.</p>' + (rows.length ? rows.map(row => `<article class="entry"><h3>${escape(row.titolo)}</h3><p>${row.candidature} candidature · ${row.stato === 'aperto' && new Date(row.scadenza.replace(' ','T')+'Z') > new Date() ? 'Aperto' : 'Chiuso o scaduto'}</p><div class="actions"><button data-candidates="${row.id}">Vedi candidature</button>${row.stato === 'aperto' ? `<button class="secondary" data-close-job="${row.id}">Chiudi annuncio</button>` : ''}</div></article>`).join('') : '<p>Non hai ancora pubblicato annunci.</p>');
-      $('newJob').onclick = publishForm;
+      renderBusinessDashboard(rows, false);
     } catch (err) { if (version === panelVersion) { $('panelContent').innerHTML=''; panelError(err); } }
   }
-  function publishForm() {
-    openPanel('Pubblica un annuncio', `<p class="notice">Indica condizioni reali e complete. Spiega turni, riposi, mansioni, eventuali costi di alloggio e come vengono pagate tredicesima e quattordicesima.</p><form id="publishForm"><label>Ruolo ricercato<input name="titolo" minlength="3" maxlength="100" required placeholder="Es. Sous chef"></label><label>Descrizione e condizioni<textarea name="descrizione" minlength="30" maxlength="6000" required></textarea></label><div class="form-grid"><label>Contratto<select name="contratto"><option value="indeterminato">Tempo indeterminato</option><option value="determinato">Tempo determinato</option><option value="stagionale">Stagionale</option><option value="apprendistato">Apprendistato</option></select></label><label>Stipendio espresso come<select name="salario_tipo"><option value="netto">Netto mensile</option><option value="lordo">Lordo mensile</option></select></label><label>Minimo mensile (€)<input name="salario_min" type="number" min="1" max="100000" required></label><label>Massimo mensile (€)<input name="salario_max" type="number" min="1" max="100000" required></label><label>Mensilità<select name="mensilita"><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></label><label>Ore settimanali<input name="ore_settimana" type="number" min="1" max="60" required></label><label>Giorni lavorativi a settimana<input name="giorni_settimana" type="number" min="1" max="6" required></label></div><label class="check"><input name="alloggio" type="checkbox">Alloggio disponibile (specifica condizioni e costi nella descrizione)</label><button type="submit">Pubblica annuncio</button></form>`);
+  function renderBusinessDashboard(rows, demo) {
+    const applications = rows.reduce((total, row) => total + Number(row.candidature || 0), 0);
+    const open = rows.filter(row => row.stato === 'aperto').length;
+    const prefix = demo ? 'demo-' : '';
+    $('panelTitle').textContent = demo ? 'Hotel Demo Merano · Area azienda' : 'I tuoi annunci';
+    const demoSummary = demo ? `<p><span class="demo-badge">MODALITÀ DEMO</span></p><p class="demo-notice"><strong>Stai usando dati fittizi.</strong> Puoi provare liberamente: nessuna azione modifica account, annunci o candidature reali.</p><div class="metric-grid"><div class="metric"><strong>${rows.length}</strong><span>Annunci totali</span></div><div class="metric"><strong>${open}</strong><span>Annunci aperti</span></div><div class="metric"><strong>${applications}</strong><span>Candidature</span></div></div>` : '';
+    $('panelContent').innerHTML = demoSummary + `<div class="actions"><button id="newJob">Pubblica un annuncio${demo ? ' di prova' : ''}</button>${demo ? '<button id="resetDemo" class="secondary">Azzera demo</button>' : ''}</div><p class="muted">Gli annunci scadono dopo 60 giorni. Puoi chiuderli prima quando trovi la persona giusta.</p>` + (rows.length ? rows.map(row => `<article class="entry"><h3>${escape(row.titolo)}</h3><p>${Number(row.candidature || 0)} candidature · ${row.stato === 'aperto' && new Date(row.scadenza.replace(' ','T')+'Z') > new Date() ? 'Aperto' : 'Chiuso o scaduto'}</p><div class="actions"><button data-${prefix}candidates="${escape(row.id)}">Vedi candidature</button>${row.stato === 'aperto' ? `<button class="secondary" data-${prefix}close-job="${escape(row.id)}">Chiudi annuncio</button>` : ''}</div></article>`).join('') : '<p>Non hai ancora pubblicato annunci.</p>');
+    $('newJob').onclick = () => publishForm(demo);
+    if (demo) $('resetDemo').onclick = () => demoBusinessArea(true);
+  }
+  function demoBusinessArea(reset = false) {
+    openPanel('Hotel Demo Merano · Area azienda', '');
+    renderBusinessDashboard(getDemoJobs(reset), true);
+    if (reset) $('panelStatus').textContent = 'Demo ripristinata.';
+  }
+  function publishForm(demo = false) {
+    openPanel(demo ? 'Pubblica un annuncio di prova' : 'Pubblica un annuncio', `${demo ? '<p class="demo-notice"><strong>Modalità demo:</strong> l’annuncio resterà soltanto in questa scheda del browser.</p>' : ''}<p class="notice">Indica condizioni reali e complete. Spiega turni, riposi, mansioni, eventuali costi di alloggio e come vengono pagate tredicesima e quattordicesima.</p><form id="publishForm"><label>Ruolo ricercato<input name="titolo" minlength="3" maxlength="100" required placeholder="Es. Sous chef"></label><label>Descrizione e condizioni<textarea name="descrizione" minlength="30" maxlength="6000" required></textarea></label><div class="form-grid"><label>Contratto<select name="contratto"><option value="indeterminato">Tempo indeterminato</option><option value="determinato">Tempo determinato</option><option value="stagionale">Stagionale</option><option value="apprendistato">Apprendistato</option></select></label><label>Stipendio espresso come<select name="salario_tipo"><option value="netto">Netto mensile</option><option value="lordo">Lordo mensile</option></select></label><label>Minimo mensile (€)<input name="salario_min" type="number" min="1" max="100000" required></label><label>Massimo mensile (€)<input name="salario_max" type="number" min="1" max="100000" required></label><label>Mensilità<select name="mensilita"><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></label><label>Ore settimanali<input name="ore_settimana" type="number" min="1" max="60" required></label><label>Giorni lavorativi a settimana<input name="giorni_settimana" type="number" min="1" max="6" required></label></div><label class="check"><input name="alloggio" type="checkbox">Alloggio disponibile (specifica condizioni e costi nella descrizione)</label><button type="submit">${demo ? 'Simula pubblicazione' : 'Pubblica annuncio'}</button></form>`);
     $('publishForm').onsubmit = async event => {
       event.preventDefault(); const button = event.submitter; button.disabled=true;
       const form = new FormData(event.currentTarget), body = Object.fromEntries(form);
       ['salario_min','salario_max','mensilita','ore_settimana','giorni_settimana'].forEach(key => body[key]=Number(body[key])); body.alloggio = form.has('alloggio');
-      try { await request('/business/jobs', { type:'business', method:'POST', body }); await businessArea(); search(); }
+      try {
+        if (demo) {
+          const jobs = getDemoJobs();
+          jobs.unshift({ id:'demo-'+Date.now(), titolo:body.titolo, candidature:0, stato:'aperto', scadenza:demoExpiry() });
+          saveDemoJobs(jobs); demoBusinessArea(); return;
+        }
+        await request('/business/jobs', { type:'business', method:'POST', body }); await businessArea(); search();
+      }
       catch (err) { panelError(err); button.disabled=false; }
     };
   }
-  async function candidates(id) {
+  async function candidates(id, demo = false) {
     const version = openPanel('Candidature ricevute', '<p>Caricamento…</p>');
     try {
-      const rows = await request(`/business/jobs/${id}/applications`, { type:'business' });
+      const rows = demo ? (demoCandidates[id] || []) : await request(`/business/jobs/${id}/applications`, { type:'business' });
       if (version !== panelVersion) return;
-      $('panelContent').innerHTML = '<button id="backBusiness" class="secondary">← I tuoi annunci</button><p class="notice">Usa questi recapiti soltanto per gestire la candidatura.</p>' + (rows.length ? rows.map(row => `<article class="entry"><h3>${escape(row.nome)}</h3><p>${escape(row.email)}</p><p class="muted">${date(row.created_at)}</p><p class="description">${escape(row.messaggio)}</p></article>`).join('') : '<p>Non sono ancora arrivate candidature per questo annuncio.</p>');
-      $('backBusiness').onclick=businessArea;
+      $('panelContent').innerHTML = (demo ? '<p><span class="demo-badge">CANDIDATURE DIMOSTRATIVE</span></p>' : '') + '<button id="backBusiness" class="secondary">← I tuoi annunci</button><p class="notice">Usa questi recapiti soltanto per gestire la candidatura.</p>' + (rows.length ? rows.map(row => `<article class="entry"><h3>${escape(row.nome)}</h3><p>${escape(row.email)}</p><p class="muted">${date(row.created_at)}</p><p class="description">${escape(row.messaggio)}</p></article>`).join('') : '<p>Non sono ancora arrivate candidature per questo annuncio.</p>');
+      $('backBusiness').onclick=demo ? demoBusinessArea : businessArea;
     } catch (err) { if (version === panelVersion) { $('panelContent').innerHTML=''; panelError(err); } }
   }
   $('results').onclick = event => { const button=event.target.closest('[data-job]'); if (button) showJob(button.dataset.job); };
   $('panelContent').addEventListener('click', async event => {
     const button=event.target.closest('button'); if (!button) return;
     if (button.dataset.candidates) return candidates(button.dataset.candidates);
+    if (button.dataset.demoCandidates) return candidates(button.dataset.demoCandidates, true);
+    if (button.dataset.demoCloseJob) {
+      const jobs = getDemoJobs();
+      const job = jobs.find(row => String(row.id) === button.dataset.demoCloseJob);
+      if (job) job.stato = 'chiuso';
+      saveDemoJobs(jobs); demoBusinessArea(); return;
+    }
     if (button.dataset.withdraw || button.dataset.closeJob) {
       const withdraw=Boolean(button.dataset.withdraw);
       if (!confirm(withdraw ? 'Ritirare e cancellare questa candidatura da Trustourant?' : 'Chiudere l’annuncio? Non riceverai altre candidature.')) return;
@@ -128,7 +183,7 @@
   });
   $('searchForm').onsubmit=event => {event.preventDefault();page=1;search();};
   $('previousPage').onclick=()=>{page--;search();}; $('nextPage').onclick=()=>{page++;search();};
-  $('myApplications').onclick=applications; $('businessArea').onclick=businessArea; $('openPublish').onclick=businessArea;
+  $('myApplications').onclick=applications; $('demoBusiness').onclick=demoBusinessArea; $('businessArea').onclick=businessArea; $('openPublish').onclick=businessArea;
   $('closePanel').onclick=()=>$('panel').close(); $('panel').addEventListener('close',()=>{panelVersion++;});
-  search(); const params=new URLSearchParams(location.search), id=params.get('annuncio'); if (id && /^\d+$/.test(id)) showJob(id); else if (params.get('area') === 'azienda') businessArea();
+  search(); const params=new URLSearchParams(location.search), id=params.get('annuncio'); if (id && /^\d+$/.test(id)) showJob(id); else if (params.get('demo') === 'azienda') demoBusinessArea(); else if (params.get('area') === 'azienda') businessArea();
 })();
