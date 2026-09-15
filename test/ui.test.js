@@ -33,10 +33,14 @@ test('Public pages contain the full jobs path and scripts parse correctly', () =
   assert.ok(jobs.querySelector('dialog#panel'));
   assert.equal(jobs.querySelector('#demoBusiness')?.textContent, 'Prova demo azienda');
   assert.ok(jobs.querySelector('link[href="lavoro-demo.css"]'));
+  assert.ok(jobs.querySelector('link[href="design-system.css"]'));
   assert.match(read('lavoro.js'), /area=azienda/);
   assert.match(read('lavoro.js'), /sessionStorage\.setItem\('trustourantDemoJobs'/);
   assert.match(read('lavoro.js'), /nessuna azione modifica account, annunci o candidature reali/i);
   assert.match(read('index.html'), /TrustourantUI\.returnPath/);
+  assert.match(read('index.html'), /id="publicStructures"/);
+  assert.match(read('public-home.js'), /api\/stats/);
+  assert.doesNotMatch(read('index.html'), /#ec4899|#f59e0b|Fase 3|Fase 4/i);
 });
 
 test('Business demo is interactive and never calls protected business endpoints', async () => {

@@ -157,7 +157,7 @@
       const rows = demo ? (demoCandidates[id] || []) : await request(`/business/jobs/${id}/applications`, { type:'business' });
       if (version !== panelVersion) return;
       $('panelContent').innerHTML = (demo ? '<p><span class="demo-badge">CANDIDATURE DIMOSTRATIVE</span></p>' : '') + '<button id="backBusiness" class="secondary">← I tuoi annunci</button><p class="notice">Usa questi recapiti soltanto per gestire la candidatura.</p>' + (rows.length ? rows.map(row => `<article class="entry"><h3>${escape(row.nome)}</h3><p>${escape(row.email)}</p><p class="muted">${date(row.created_at)}</p><p class="description">${escape(row.messaggio)}</p></article>`).join('') : '<p>Non sono ancora arrivate candidature per questo annuncio.</p>');
-      $('backBusiness').onclick=demo ? demoBusinessArea : businessArea;
+      $('backBusiness').onclick=demo ? () => demoBusinessArea() : businessArea;
     } catch (err) { if (version === panelVersion) { $('panelContent').innerHTML=''; panelError(err); } }
   }
   $('results').onclick = event => { const button=event.target.closest('[data-job]'); if (button) showJob(button.dataset.job); };
@@ -183,7 +183,7 @@
   });
   $('searchForm').onsubmit=event => {event.preventDefault();page=1;search();};
   $('previousPage').onclick=()=>{page--;search();}; $('nextPage').onclick=()=>{page++;search();};
-  $('myApplications').onclick=applications; $('demoBusiness').onclick=demoBusinessArea; $('businessArea').onclick=businessArea; $('openPublish').onclick=businessArea;
+  $('myApplications').onclick=applications; $('demoBusiness').onclick=() => demoBusinessArea(); $('businessArea').onclick=businessArea; $('openPublish').onclick=businessArea;
   $('closePanel').onclick=()=>$('panel').close(); $('panel').addEventListener('close',()=>{panelVersion++;});
   search(); const params=new URLSearchParams(location.search), id=params.get('annuncio'); if (id && /^\d+$/.test(id)) showJob(id); else if (params.get('demo') === 'azienda') demoBusinessArea(); else if (params.get('area') === 'azienda') businessArea();
 })();
