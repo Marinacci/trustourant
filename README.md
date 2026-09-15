@@ -12,7 +12,7 @@ Recensioni dei luoghi di lavoro e opportunità nell’ospitalità.
 
 ## Modulo lavoro
 
-La pagina `lavoro.html` usa il backend Render già esistente. Durante il primo rilascio il collegamento pubblico resta disattivato finché backend e database persistente non superano i controlli di produzione. In locale la nuova pagina usa `/api` sullo stesso host. Gli account restano quelli esistenti; i token sono condivisi fra le pagine solo sullo stesso dominio.
+La pagina `lavoro.html` usa il backend Render già esistente ed è collegata dalla navigazione pubblica dopo il superamento dei controlli di produzione su backend e database persistente. In locale la nuova pagina usa `/api` sullo stesso host. Gli account restano quelli esistenti; i token sono condivisi fra le pagine solo sullo stesso dominio.
 
 - Ricerca pubblica per ruolo/struttura, città/provincia, minimo mensile netto o lordo e disponibilità alloggio. Pagine da 20 risultati.
 - Annunci con stipendio minimo/massimo, netto/lordo, mensilità, ore e giorni settimanali obbligatori; durata 60 giorni e chiusura anticipata.
