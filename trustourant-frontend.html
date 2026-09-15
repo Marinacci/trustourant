@@ -4,7 +4,7 @@
   <meta name="referrer" content="no-referrer">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrustOurant - Fase 3 con Verificazioni e Statistiche</title>
+  <title>TrustOurant - Recensioni e opportunità nell’ospitalità</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
   <style>
     * {
@@ -15,8 +15,8 @@
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      color: #1f2937;
+      background: linear-gradient(135deg, #f6f5ef 0%, #e8eddf 100%);
+      color: #23372e;
       line-height: 1.6;
     }
 
@@ -46,7 +46,7 @@
     .logo {
       font-size: 28px;
       font-weight: 700;
-      background: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%);
+      background: linear-gradient(135deg, #234c3b 0%, #4c7046 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -60,7 +60,7 @@
 
     nav button {
       padding: 8px 16px;
-      background: #ec4899;
+      background: #234c3b;
       color: white;
       border: none;
       border-radius: 6px;
@@ -71,18 +71,18 @@
     }
 
     nav button:hover {
-      background: #be185d;
+      background: #183b2c;
     }
 
     nav button.active {
-      background: #1f2937;
+      background: #23372e;
     }
 
     .user-info {
       display: flex;
       align-items: center;
       gap: 10px;
-      color: #1f2937;
+      color: #23372e;
       font-weight: 600;
     }
 
@@ -115,7 +115,7 @@
     }
 
     .auth-container h1 {
-      color: #1f2937;
+      color: #23372e;
       margin-bottom: 30px;
       text-align: center;
     }
@@ -128,7 +128,7 @@
       display: block;
       margin-bottom: 8px;
       font-weight: 600;
-      color: #1f2937;
+      color: #23372e;
     }
 
     .form-group input, .form-group select, .form-group textarea {
@@ -143,13 +143,13 @@
 
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
       outline: none;
-      border-color: #ec4899;
+      border-color: #234c3b;
     }
 
     .submit-btn {
       width: 100%;
       padding: 12px;
-      background: #ec4899;
+      background: #234c3b;
       color: white;
       border: none;
       border-radius: 6px;
@@ -160,7 +160,7 @@
     }
 
     .submit-btn:hover {
-      background: #be185d;
+      background: #183b2c;
     }
 
     /* Dashboard */
@@ -176,11 +176,11 @@
       padding: 25px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      border-left: 4px solid #ec4899;
+      border-left: 4px solid #234c3b;
     }
 
     .stat-label {
-      color: #9ca3af;
+      color: #56675e;
       font-size: 14px;
       font-weight: 600;
       text-transform: uppercase;
@@ -190,11 +190,11 @@
     .stat-value {
       font-size: 36px;
       font-weight: 700;
-      color: #1f2937;
+      color: #23372e;
     }
 
     .stat-subtext {
-      color: #6b7280;
+      color: #56675e;
       font-size: 13px;
       margin-top: 8px;
     }
@@ -211,7 +211,7 @@
     }
 
     .chart-container h3 {
-      color: #1f2937;
+      color: #23372e;
       margin-bottom: 20px;
       font-size: 18px;
     }
@@ -226,7 +226,7 @@
     }
 
     .verificazione-section h2 {
-      color: #1f2937;
+      color: #23372e;
       margin-bottom: 20px;
     }
 
@@ -282,7 +282,7 @@
 
     .search-btn {
       padding: 10px 30px;
-      background: #ec4899;
+      background: #234c3b;
       color: white;
       border: none;
       border-radius: 6px;
@@ -312,12 +312,12 @@
     }
 
     .struttura-card h3 {
-      color: #1f2937;
+      color: #23372e;
       margin-bottom: 10px;
     }
 
     .struttura-info {
-      color: #6b7280;
+      color: #56675e;
       font-size: 14px;
       margin-bottom: 10px;
     }
@@ -330,13 +330,13 @@
     }
 
     .stars {
-      color: #f59e0b;
+      color: #4c7046;
       font-size: 18px;
     }
 
     .rating-value {
       font-weight: 600;
-      color: #1f2937;
+      color: #23372e;
     }
 
     /* Alert */
@@ -379,7 +379,7 @@
     }
 
     .review-form h3 {
-      color: #1f2937;
+      color: #23372e;
       margin-bottom: 20px;
     }
 
@@ -402,7 +402,7 @@
       padding: 12px 20px;
       background: none;
       border: none;
-      color: #6b7280;
+      color: #56675e;
       cursor: pointer;
       font-weight: 600;
       border-bottom: 3px solid transparent;
@@ -410,8 +410,8 @@
     }
 
     .tab-btn.active {
-      color: #ec4899;
-      border-bottom-color: #ec4899;
+      color: #234c3b;
+      border-bottom-color: #234c3b;
     }
 
     @media (max-width: 768px) {
@@ -433,12 +433,14 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="design-system.css">
 </head>
 <body>
+<a class="skip-link" href="#mainApp">Vai alla ricerca</a>
   <header>
     <div class="container">
       <div class="logo">🍽️ TrustOurant</div>
-      <a href="lavoro.html" style="color: #be185d; font-weight: 700; margin: 0 10px;">Trova lavoro</a>
+      <a href="lavoro.html" style="color: #183b2c; font-weight: 700; margin: 0 10px;">Trova lavoro</a>
       <nav id="mainNav">
         <button class="nav-btn active" data-tab="ricerca">Ricerca</button>
         <button class="nav-btn" data-tab="classifica">Classifica</button>
@@ -450,7 +452,7 @@
         <span id="businessName" style="font-size: 13px;"></span>
         <button id="businessLogoutBtn" style="font-size: 12px;">Esci (azienda)</button>
       </div>
-      <button onclick="app.showSection('businessClaim')" style="background: none; border: 1px solid #ec4899; color: #ec4899; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 10px;">🏢 Area Aziende</button>
+      <button onclick="app.showSection('businessClaim')" style="background: none; border: 1px solid #234c3b; color: #234c3b; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 10px;">🏢 Area Aziende</button>
       <div id="userNav" class="user-info" style="display: none;">
         <span id="userName"></span>
         <span id="badgeVerificato" class="badge-verificato" style="display: none;">✓ Verificato</span>
@@ -463,6 +465,8 @@
     </div>
   </header>
 
+  <section class="welcome" aria-labelledby="welcomeTitle"><div><span class="eyebrow">PERSONE · LAVORO · OSPITALITÀ</span><h1 id="welcomeTitle">Il lavoro nell’ospitalità,<br>a condizioni chiare.</h1><p>Esplora le esperienze di chi ci ha lavorato e cerca opportunità con stipendio, orari e riposi dichiarati.</p><div class="welcome-actions"><a class="button" href="lavoro.html">Trova lavoro →</a><a class="button secondary" href="lavoro.html?area=azienda">Cerco personale</a><a class="button secondary" href="#mainApp">Esplora le strutture</a></div></div><aside><h2>La fiducia parte dai dettagli.</h2><p>Leggi le esperienze. Confronta le condizioni. Scegli con più informazioni.</p><p>Gli annunci sono riservati ad aziende verificate manualmente. Le condizioni restano dichiarate dall’azienda.</p><a href="lavoro.html?demo=azienda">Prova la demo aziendale →</a></aside></section>
+  <section class="public-stats" aria-label="Trustourant in numeri"><div class="public-stat"><strong id="publicStructures">—</strong><span>Strutture censite</span></div><div class="public-stat"><strong id="publicReviews">—</strong><span>Recensioni pubblicate</span></div><div class="public-stat"><strong id="publicUsers">—</strong><span>Autori di recensioni</span></div><p id="publicStatsStatus" class="public-stats-note" role="status" aria-live="polite">Caricamento dati reali…</p></section>
   <div class="container">
     <!-- Login -->
     <div id="loginSection" class="section active">
@@ -480,7 +484,7 @@
           </div>
           <button type="submit" class="submit-btn">Accedi</button>
           <p style="text-align: center; margin-top: 15px;">
-            <a href="#" onclick="app.showSection('forgotPassword'); return false;" style="color: #ec4899; font-size: 14px; text-decoration: underline;">Password dimenticata?</a>
+            <a href="#" onclick="app.showSection('forgotPassword'); return false;" style="color: #234c3b; font-size: 14px; text-decoration: underline;">Password dimenticata?</a>
           </p>
         </form>
       </div>
@@ -490,7 +494,7 @@
     <div id="forgotPasswordSection" class="section">
       <div class="auth-container">
         <h1>Password Dimenticata</h1>
-        <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Inserisci la tua email: ti manderemo un link per scegliere una nuova password.</p>
+        <p style="color: #56675e; margin-bottom: 20px; font-size: 14px;">Inserisci la tua email: ti manderemo un link per scegliere una nuova password.</p>
         <div id="forgotPasswordAlert" class="alert"></div>
         <form id="forgotPasswordForm">
           <div class="form-group">
@@ -500,7 +504,7 @@
           <button type="submit" class="submit-btn">Invia Link di Reset</button>
         </form>
         <p style="text-align: center; margin-top: 15px;">
-          <a href="#" onclick="app.showSection('login'); return false;" style="color: #ec4899; font-size: 14px; text-decoration: underline;">Torna al Login</a>
+          <a href="#" onclick="app.showSection('login'); return false;" style="color: #234c3b; font-size: 14px; text-decoration: underline;">Torna al Login</a>
         </p>
       </div>
     </div>
@@ -528,12 +532,12 @@
     <div id="businessClaimSection" class="section">
       <div class="auth-container">
         <h1>🏢 Area Aziende</h1>
-        <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Sei il titolare o direttore di una struttura? Crea un account aziendale per rispondere ufficialmente alle recensioni.</p>
+        <p style="color: #56675e; margin-bottom: 20px; font-size: 14px;">Sei il titolare o direttore di una struttura? Crea un account aziendale per rispondere ufficialmente alle recensioni.</p>
         <div id="businessAlert" class="alert"></div>
 
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
           <button onclick="app.showBusinessTab('login')" id="businessTabLoginBtn" class="submit-btn" style="width: auto; padding: 8px 16px; flex: 1;">Accedi</button>
-          <button onclick="app.showBusinessTab('register')" id="businessTabRegisterBtn" class="submit-btn" style="width: auto; padding: 8px 16px; flex: 1; background: #6b7280;">Rivendica struttura</button>
+          <button onclick="app.showBusinessTab('register')" id="businessTabRegisterBtn" class="submit-btn" style="width: auto; padding: 8px 16px; flex: 1; background: #56675e;">Rivendica struttura</button>
         </div>
 
         <form id="businessLoginForm">
@@ -563,7 +567,7 @@
           <div class="form-group">
             <label>Email aziendale</label>
             <input type="email" id="businessRegisterEmail" required>
-            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Se corrisponde al sito web ufficiale della struttura, l'account viene verificato subito. Altrimenti lo verifichiamo manualmente entro breve.</div>
+            <div style="font-size: 12px; color: #56675e; margin-top: 4px;">Se corrisponde al sito web ufficiale della struttura, l'account viene verificato subito. Altrimenti lo verifichiamo manualmente entro breve.</div>
           </div>
           <div class="form-group">
             <label>Password</label>
@@ -635,7 +639,7 @@
         </div>
 
         <div id="risultati">
-          <div style="text-align: center; padding: 40px; color: #6b7280;">
+          <div style="text-align: center; padding: 40px; color: #56675e;">
             <h3>Inizia a cercare</h3>
             <p>Usa i filtri sopra per trovare le strutture</p>
           </div>
@@ -649,7 +653,7 @@
 
         <div style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap;">
           <button id="btnTopMigliori" class="submit-btn" style="width: auto; padding: 10px 20px;">🏆 Top 50 Migliori</button>
-          <button id="btnTopPeggiori" class="submit-btn" style="width: auto; padding: 10px 20px; background: #6b7280;">📉 Le Più Criticate</button>
+          <button id="btnTopPeggiori" class="submit-btn" style="width: auto; padding: 10px 20px; background: #56675e;">📉 Le Più Criticate</button>
         </div>
 
         <div id="classificaList"></div>
@@ -700,12 +704,12 @@
       <div id="verificazioneTab" class="section-tab">
         <div class="verificazione-section">
           <h2>Verificazione Dipendente</h2>
-          <p style="color: #6b7280; margin-bottom: 20px;">Verifica la tua esperienza lavorativa per ottenere il badge "Dipendente Verificato"</p>
+          <p style="color: #56675e; margin-bottom: 20px;">Verifica la tua esperienza lavorativa per ottenere il badge "Dipendente Verificato"</p>
           
           <div id="verificazioneStatus"></div>
 
           <form id="verificazioneForm" style="margin-top: 30px;">
-            <h3 style="color: #1f2937; margin-bottom: 20px;">Nuova Richiesta di Verificazione</h3>
+            <h3 style="color: #23372e; margin-bottom: 20px;">Nuova Richiesta di Verificazione</h3>
             
             <div class="form-group">
               <label>Struttura Attuale/Precedente</label>
@@ -749,7 +753,7 @@
       <!-- Le Mie Review -->
       <div id="mieReviewTab" class="section-tab">
         <div style="background: white; padding: 30px; border-radius: 12px;">
-          <h2 style="color: #1f2937; margin-bottom: 20px;">Le Mie Recensioni</h2>
+          <h2 style="color: #23372e; margin-bottom: 20px;">Le Mie Recensioni</h2>
           <div id="mieReviewList"></div>
         </div>
       </div>
@@ -782,6 +786,7 @@
 
         // Se l'utente arriva dal link ricevuto via email, mostra direttamente la pagina "Reimposta Password"
         const params = new URLSearchParams(window.location.search);
+        if (TrustourantUI.returnPath(location.search) && !this.token && location.hash !== '#aziende') this.showSection('login');
         if (location.hash === '#aziende') this.showSection('businessClaim');
         if (params.get('reset_token')) {
           this.showSection('resetPassword');
@@ -843,8 +848,8 @@
           this.loadStruttureDrop();
           this.loadMieReview();
         } else {
-          document.getElementById('loginSection').classList.add('active');
-          document.getElementById('mainApp').classList.remove('active');
+          document.getElementById('loginSection').classList.remove('active');
+          document.getElementById('mainApp').classList.add('active');
           document.getElementById('userNav').style.display = 'none';
           document.getElementById('authNav').style.display = 'flex';
         }
@@ -869,6 +874,7 @@
         document.querySelectorAll('#loginSection, #registerSection, #forgotPasswordSection, #resetPasswordSection, #businessClaimSection').forEach(s => s.classList.remove('active'));
         const map = { login: 'loginSection', register: 'registerSection', forgotPassword: 'forgotPasswordSection', resetPassword: 'resetPasswordSection', businessClaim: 'businessClaimSection' };
         if (map[section]) document.getElementById(map[section]).classList.add('active');
+        if (map[section]) document.getElementById(map[section]).scrollIntoView({block:'start'});
       },
 
       async handleForgotPassword(e) {
@@ -920,8 +926,8 @@
       showBusinessTab(tab) {
         document.getElementById('businessLoginForm').style.display = tab === 'login' ? 'block' : 'none';
         document.getElementById('businessRegisterForm').style.display = tab === 'register' ? 'block' : 'none';
-        document.getElementById('businessTabLoginBtn').style.background = tab === 'login' ? '#ec4899' : '#6b7280';
-        document.getElementById('businessTabRegisterBtn').style.background = tab === 'register' ? '#ec4899' : '#6b7280';
+        document.getElementById('businessTabLoginBtn').style.background = tab === 'login' ? '#234c3b' : '#56675e';
+        document.getElementById('businessTabRegisterBtn').style.background = tab === 'register' ? '#234c3b' : '#56675e';
       },
 
       async searchStrutturaPerBusiness() {
@@ -1077,7 +1083,7 @@
 
           let html = '';
           if (strutture.length === 0) {
-            html = '<div style="text-align: center; padding: 40px; color: #6b7280;"><h3>Nessuna struttura trovata</h3></div>';
+            html = '<div style="text-align: center; padding: 40px; color: #56675e;"><h3>Nessuna struttura trovata</h3></div>';
           } else {
             html = '<div class="strutture-grid">';
             strutture.forEach(s => {
@@ -1093,7 +1099,7 @@
                     <span class="stars">${stars}</span>
                     <span class="rating-value">${TrustourantUI.number(s.rating).toFixed(1)}</span>
                   </div>
-                  <div style="font-size: 12px; color: #9ca3af;">${app.esc(s.num_reviews)} review</div>
+                  <div style="font-size: 12px; color: #56675e;">${app.esc(s.num_reviews)} review</div>
                   ${(s.stagionalita || s.vitto_alloggio) ? `
                   <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
                     ${s.stagionalita === 'stagionale' ? '<span style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px;">🏔️ Stagionale</span>' : ''}
@@ -1122,20 +1128,20 @@
 
           let html = `
             <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 30px;">
-              <h1 style="color: #1f2937; margin-bottom: 20px;">${app.esc(data.struttura.nome)}</h1>
+              <h1 style="color: #23372e; margin-bottom: 20px;">${app.esc(data.struttura.nome)}</h1>
               
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
-                  <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Tipo</div>
-                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${app.esc(data.struttura.tipo)}</div>
+                  <div style="font-size: 12px; text-transform: uppercase; color: #56675e; font-weight: 600; margin-bottom: 5px;">Tipo</div>
+                  <div style="font-size: 16px; color: #23372e; font-weight: 600;">${app.esc(data.struttura.tipo)}</div>
                 </div>
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
-                  <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Ubicazione</div>
-                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${app.esc(data.struttura.città)}, ${app.esc(data.struttura.provincia)}</div>
+                  <div style="font-size: 12px; text-transform: uppercase; color: #56675e; font-weight: 600; margin-bottom: 5px;">Ubicazione</div>
+                  <div style="font-size: 16px; color: #23372e; font-weight: 600;">${app.esc(data.struttura.città)}, ${app.esc(data.struttura.provincia)}</div>
                 </div>
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
-                  <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Rating</div>
-                  <div style="font-size: 28px; color: #f59e0b; font-weight: 700;">★ ${TrustourantUI.number(data.struttura.rating).toFixed(1)}</div>
+                  <div style="font-size: 12px; text-transform: uppercase; color: #56675e; font-weight: 600; margin-bottom: 5px;">Rating</div>
+                  <div style="font-size: 28px; color: #4c7046; font-weight: 700;">★ ${TrustourantUI.number(data.struttura.rating).toFixed(1)}</div>
                 </div>
                 ${data.struttura.stagionalita ? `
                 <div style="background: #fef3c7; padding: 15px; border-radius: 8px;">
@@ -1163,23 +1169,23 @@
                 `;
               })()}
 
-              <h3 style="color: #1f2937; margin: 30px 0 20px;">Scrivi Recensione</h3>
+              <h3 style="color: #23372e; margin: 30px 0 20px;">Scrivi Recensione</h3>
               <form id="reviewForm" style="background: #f9fafb; padding: 25px; border-radius: 12px;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                   <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Responsabile diretto (1-5)</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #23372e;">Responsabile diretto (1-5)</label>
                     <input type="range" id="valResponsabile" min="1" max="5" value="3" style="width: 100%;">
-                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valResponsabileDisplay">3</div>
+                    <div style="color: #234c3b; font-weight: 600; margin-top: 5px;" id="valResponsabileDisplay">3</div>
                   </div>
                   <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Datore (1-5)</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #23372e;">Datore (1-5)</label>
                     <input type="range" id="valDatore" min="1" max="5" value="3" style="width: 100%;">
-                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valDatoreDisplay">3</div>
+                    <div style="color: #234c3b; font-weight: 600; margin-top: 5px;" id="valDatoreDisplay">3</div>
                   </div>
                   <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Clima (1-5)</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #23372e;">Clima (1-5)</label>
                     <input type="range" id="valClima" min="1" max="5" value="3" style="width: 100%;">
-                    <div style="color: #ec4899; font-weight: 600; margin-top: 5px;" id="valClimaDisplay">3</div>
+                    <div style="color: #234c3b; font-weight: 600; margin-top: 5px;" id="valClimaDisplay">3</div>
                   </div>
                 </div>
 
@@ -1191,22 +1197,22 @@
                 <textarea id="commento" placeholder="La tua esperienza..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; min-height: 120px; font-family: inherit; margin-bottom: 20px;"></textarea>
 
                 <div style="margin-bottom: 20px;">
-                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Cosa consiglieresti alla direzione di migliorare?</label>
+                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #23372e;">Cosa consiglieresti alla direzione di migliorare?</label>
                   <textarea id="consiglioDirezione" placeholder="Es: più personale nei weekend, turni più chiari..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; min-height: 70px; font-family: inherit;"></textarea>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Cosa rifaresti volentieri?</label>
+                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #23372e;">Cosa rifaresti volentieri?</label>
                   <textarea id="rifaresti" placeholder="Es: il rapporto con i colleghi, l'esperienza in cucina..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; min-height: 70px; font-family: inherit;"></textarea>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Che tipo di colloquio/prova pratica fanno per assumere?</label>
+                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #23372e;">Che tipo di colloquio/prova pratica fanno per assumere?</label>
                   <textarea id="colloquioInfo" placeholder="Es: colloquio conoscitivo + giornata di prova in cucina..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; min-height: 70px; font-family: inherit;"></textarea>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1f2937;">Consiglieresti questa struttura a un amico?</label>
+                  <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #23372e;">Consiglieresti questa struttura a un amico?</label>
                   <div style="display: flex; gap: 15px;">
                     <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="consiglierebbe" value="1" checked> Sì</label>
                     <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="consiglierebbe" value="0"> No</label>
@@ -1218,15 +1224,15 @@
             </div>
 
             <div style="background: white; padding: 30px; border-radius: 12px;">
-              <h3 style="color: #1f2937; margin-bottom: 20px;">Recensioni (${data.reviews.length})</h3>
-              ${data.reviews.length === 0 ? '<p style="color: #9ca3af;">Nessuna recensione ancora. Sii il primo!</p>' : ''}
+              <h3 style="color: #23372e; margin-bottom: 20px;">Recensioni (${data.reviews.length})</h3>
+              ${data.reviews.length === 0 ? '<p style="color: #56675e;">Nessuna recensione ancora. Sii il primo!</p>' : ''}
               ${data.reviews.map(r => `
-                <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ec4899;">
+                <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #234c3b;">
                   <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <strong style="color: #1f2937;">${app.esc(r.nome)}</strong>
-                    <span style="color: #9ca3af; font-size: 12px;">${new Date(r.created_at).toLocaleDateString('it-IT')}</span>
+                    <strong style="color: #23372e;">${app.esc(r.nome)}</strong>
+                    <span style="color: #56675e; font-size: 12px;">${new Date(r.created_at).toLocaleDateString('it-IT')}</span>
                   </div>
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; font-size: 13px; color: #6b7280;">
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; font-size: 13px; color: #56675e;">
                     <div>Responsabile diretto: ★ ${app.esc(r.valutazione_chef)}</div>
                     <div>Datore: ★ ${app.esc(r.valutazione_datore)}</div>
                     <div>Clima: ★ ${app.esc(r.clima_lavoro)}</div>
@@ -1234,9 +1240,9 @@
                     ${r.ore_lavoro ? `<div>Ore: ${app.esc(r.ore_lavoro)}</div>` : ''}
                   </div>
                   ${r.commento ? `<div style="color: #4b5563; margin-top: 10px;">${app.esc(r.commento)}</div>` : ''}
-                  ${r.consiglio_direzione ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">💡 Consiglio alla direzione:</strong><div style="color: #4b5563;">${app.esc(r.consiglio_direzione)}</div></div>` : ''}
-                  ${r.rifaresti ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">👍 Cosa rifarebbe volentieri:</strong><div style="color: #4b5563;">${app.esc(r.rifaresti)}</div></div>` : ''}
-                  ${r.colloquio_info ? `<div style="margin-top: 12px;"><strong style="color: #1f2937; font-size: 13px;">🎤 Come è il colloquio:</strong><div style="color: #4b5563;">${app.esc(r.colloquio_info)}</div></div>` : ''}
+                  ${r.consiglio_direzione ? `<div style="margin-top: 12px;"><strong style="color: #23372e; font-size: 13px;">💡 Consiglio alla direzione:</strong><div style="color: #4b5563;">${app.esc(r.consiglio_direzione)}</div></div>` : ''}
+                  ${r.rifaresti ? `<div style="margin-top: 12px;"><strong style="color: #23372e; font-size: 13px;">👍 Cosa rifarebbe volentieri:</strong><div style="color: #4b5563;">${app.esc(r.rifaresti)}</div></div>` : ''}
+                  ${r.colloquio_info ? `<div style="margin-top: 12px;"><strong style="color: #23372e; font-size: 13px;">🎤 Come è il colloquio:</strong><div style="color: #4b5563;">${app.esc(r.colloquio_info)}</div></div>` : ''}
                   ${r.consiglierebbe !== null && r.consiglierebbe !== undefined ? `<div style="margin-top: 12px; font-weight: 600; color: ${r.consiglierebbe === 1 ? '#16a34a' : '#dc2626'};">${r.consiglierebbe === 1 ? '✓ Consiglierebbe questa struttura a un amico' : '✗ Non consiglierebbe questa struttura a un amico'}</div>` : ''}
                   ${r.risposta_datore && r.risposta_datore_moderata === 1 ? `
                   <div style="margin-top: 15px; background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 12px 15px; border-radius: 6px;">
@@ -1253,7 +1259,7 @@
                   </div>
                   ` : `
                   <div style="margin-top: 10px;">
-                    <a href="#" onclick="app.showSection('businessClaim'); return false;" style="font-size: 13px; color: #6b7280; text-decoration: underline;">Sei il titolare? Rivendica questa struttura per poter rispondere</a>
+                    <a href="#" onclick="app.showSection('businessClaim'); return false;" style="font-size: 13px; color: #56675e; text-decoration: underline;">Sei il titolare? Rivendica questa struttura per poter rispondere</a>
                   </div>
                   `}
                 </div>
@@ -1346,8 +1352,8 @@
       },
 
       async loadClassifica(tipo) {
-        document.getElementById('btnTopMigliori').style.background = tipo === 'migliori' ? '#ec4899' : '#6b7280';
-        document.getElementById('btnTopPeggiori').style.background = tipo === 'peggiori' ? '#ec4899' : '#6b7280';
+        document.getElementById('btnTopMigliori').style.background = tipo === 'migliori' ? '#234c3b' : '#56675e';
+        document.getElementById('btnTopPeggiori').style.background = tipo === 'peggiori' ? '#234c3b' : '#56675e';
 
         const list = document.getElementById('classificaList');
         list.innerHTML = '<div style="text-align:center; color:#cbd5e1; padding:20px;">Caricamento...</div>';
@@ -1365,15 +1371,15 @@
             const stars = '★'.repeat(Math.round(Math.max(0, Math.min(5, TrustourantUI.number(s.rating))))) + '☆'.repeat(5 - Math.round(Math.max(0, Math.min(5, TrustourantUI.number(s.rating)))));
             return `
               <div class="struttura-card" style="cursor: pointer; display: flex; align-items: center; gap: 15px;" onclick="app.viewStruttura(${s.id})">
-                <div style="font-size: 22px; font-weight: 700; color: #ec4899; min-width: 40px;">#${i + 1}</div>
+                <div style="font-size: 22px; font-weight: 700; color: #234c3b; min-width: 40px;">#${i + 1}</div>
                 <div style="flex: 1;">
                   <h3 style="margin: 0;">${app.esc(s.nome)}</h3>
-                  <div style="color: #6b7280; font-size: 13px;">${app.esc(s.città)}, ${app.esc(s.provincia)}</div>
+                  <div style="color: #56675e; font-size: 13px;">${app.esc(s.città)}, ${app.esc(s.provincia)}</div>
                   <div class="rating">
                     <span class="stars">${stars}</span>
                     <span class="rating-value">${TrustourantUI.number(s.rating).toFixed(1)}</span>
                   </div>
-                  <div style="font-size: 12px; color: #9ca3af;">${app.esc(s.num_reviews)} review</div>
+                  <div style="font-size: 12px; color: #56675e;">${app.esc(s.num_reviews)} review</div>
                 </div>
               </div>
             `;
@@ -1407,7 +1413,7 @@
                 datasets: [{
                   label: 'Rating Medio',
                   data: regioni.map(r => parseFloat(r.rating_medio)),
-                  backgroundColor: '#ec4899'
+                  backgroundColor: '#234c3b'
                 }]
               },
               options: { responsive: true, maintainAspectRatio: false }
@@ -1429,7 +1435,7 @@
                 labels: distrib.map(d => d.fascia),
                 datasets: [{
                   data: distrib.map(d => d.count),
-                  backgroundColor: ['#10b981', '#84cc16', '#f59e0b', '#ef4444', '#8b5cf6']
+                  backgroundColor: ['#10b981', '#84cc16', '#4c7046', '#ef4444', '#8b5cf6']
                 }]
               },
               options: { responsive: true, maintainAspectRatio: false }
@@ -1453,7 +1459,7 @@
                 datasets: [{
                   label: 'Strutture',
                   data: top12.map(p => p.num_strutture),
-                  backgroundColor: '#ec4899'
+                  backgroundColor: '#234c3b'
                 }]
               },
               options: { 
@@ -1528,15 +1534,15 @@
 
           let html = '';
           if (verificazioni.length === 0) {
-            html = '<p style="color: #6b7280;">Nessuna richiesta di verificazione ancora.</p>';
+            html = '<p style="color: #56675e;">Nessuna richiesta di verificazione ancora.</p>';
           } else {
             verificazioni.forEach(v => {
               const badge = v.verificato === 1 ? 'approved' : 'pending';
               const testo = v.verificato === 1 ? '✓ Verificato' : '⏳ In attesa di revisione';
               html += `
                 <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${v.verificato === 1 ? '#10b981' : '#fbbf24'};">
-                  <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">${app.esc(v.posizione)}</div>
-                  <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">Periodo: ${app.esc(v.periodo_inizio)} ${app.esc(v.periodo_fine ? ' - ' + v.periodo_fine : '')}</div>
+                  <div style="font-weight: 600; color: #23372e; margin-bottom: 10px;">${app.esc(v.posizione)}</div>
+                  <div style="font-size: 14px; color: #56675e; margin-bottom: 10px;">Periodo: ${app.esc(v.periodo_inizio)} ${app.esc(v.periodo_fine ? ' - ' + v.periodo_fine : '')}</div>
                   <span class="status-badge ${badge}">${testo}</span>
                 </div>
               `;
@@ -1558,12 +1564,12 @@
 
           let html = '';
           if (reviews.length === 0) {
-            html = '<p style="color: #6b7280;">Non hai scritto nessuna recensione ancora.</p>';
+            html = '<p style="color: #56675e;">Non hai scritto nessuna recensione ancora.</p>';
           } else {
             html = reviews.map(r => `
-              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ec4899;">
-                <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">Rating Medio: ${TrustourantUI.number(r.rating_medio).toFixed(1)}</div>
-                <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #234c3b;">
+                <div style="font-weight: 600; color: #23372e; margin-bottom: 10px;">Rating Medio: ${TrustourantUI.number(r.rating_medio).toFixed(1)}</div>
+                <div style="font-size: 14px; color: #56675e; margin-bottom: 10px;">
                   ${r.moderato === 1 ? '✓ Pubblicata' : '⏳ In moderazione'}
                 </div>
                 <div style="color: #4b5563; margin-top: 10px;">${app.esc(r.commento)}</div>
@@ -1596,5 +1602,7 @@
 
     app.init();
   </script>
+<footer class="site-footer"><span>Trustourant · Persone e ospitalità</span><a href="lavoro.html">Trova lavoro</a><a href="privacy.html">Privacy e trattamento dei dati</a></footer>
+  <script src="public-home.js" defer></script>
 </body>
 </html>

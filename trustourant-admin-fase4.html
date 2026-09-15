@@ -4,40 +4,40 @@
   <meta name="referrer" content="no-referrer">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrustOurant - Admin Dashboard Fase 4</title>
+  <title>Trustourant · Dashboard amministratore</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #1f2937; line-height: 1.6; min-height: 100vh; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #f6f5ef 0%, #e8eddf 100%); color: #23372e; line-height: 1.6; min-height: 100vh; }
     .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
     header { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px 0; margin-bottom: 30px; }
     header .container { display: flex; justify-content: space-between; align-items: center; padding-top: 0; padding-bottom: 0; }
-    .logo { font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .admin-badge { background: #1f2937; color: white; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 12px; }
+    .logo { font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #234c3b 0%, #4c7046 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .admin-badge { background: #23372e; color: white; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 12px; }
     .login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.97); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .login-box { background: white; padding: 40px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; }
-    .login-box h2 { color: #1f2937; margin-bottom: 20px; }
+    .login-box h2 { color: #23372e; margin-bottom: 20px; }
     .login-box input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px; margin-bottom: 15px; }
-    .login-box button { width: 100%; padding: 12px; background: #ec4899; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 16px; }
+    .login-box button { width: 100%; padding: 12px; background: #234c3b; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 16px; }
     .login-error { color: #ef4444; font-size: 14px; margin-top: 10px; display: none; }
     .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid rgba(255,255,255,0.2); flex-wrap: wrap; }
     .tab-btn { padding: 12px 20px; background: none; border: none; color: #cbd5e1; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.3s; }
-    .tab-btn.active { color: #ec4899; border-bottom-color: #ec4899; }
+    .tab-btn.active { color: #234c3b; border-bottom-color: #234c3b; }
     .section { display: none; }
     .section.active { display: block; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
     .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
-    .stat-label { color: #9ca3af; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 10px; }
-    .stat-value { font-size: 32px; font-weight: 700; color: #ec4899; }
+    .stat-label { color: #56675e; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 10px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: #234c3b; }
     .card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .review-card { border-left: 4px solid #f59e0b; }
+    .review-card { border-left: 4px solid #4c7046; }
     .review-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-    .review-user { font-weight: 600; color: #1f2937; font-size: 16px; }
-    .review-date { color: #9ca3af; font-size: 12px; }
+    .review-user { font-weight: 600; color: #23372e; font-size: 16px; }
+    .review-date { color: #56675e; font-size: 12px; }
     .review-content { background: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; }
     .ratings { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 15px; }
     .rating-item { background: #f3f4f6; padding: 10px; border-radius: 6px; font-size: 13px; }
-    .rating-label { color: #6b7280; font-weight: 600; }
-    .rating-value { color: #ec4899; font-weight: 700; font-size: 18px; }
+    .rating-label { color: #56675e; font-weight: 600; }
+    .rating-value { color: #234c3b; font-weight: 700; font-size: 18px; }
     .buttons { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; }
     .btn-approve { background: #10b981; color: white; }
@@ -45,27 +45,31 @@
     .btn-reject { background: #ef4444; color: white; }
     .btn-reject:hover { background: #dc2626; }
     .btn-ban { background: #7c2d12; color: white; }
-    .btn-export { background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; display: inline-block; }
+    .btn-export { background: #234c3b; color: white; padding: 12px 24px; text-decoration: none; display: inline-block; }
     .verification-status { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e; }
-    .empty { padding: 40px; text-align: center; color: #9ca3af; }
+    .empty { padding: 40px; text-align: center; color: #56675e; }
     .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
     .alert.show { display: block; }
     .alert.success { background: #d1fae5; color: #065f46; }
     .alert.error { background: #fee2e2; color: #991b1b; }
-    .section-title { color: white; margin-bottom: 20px; }
+    .section-title { color: #23372e; margin-bottom: 20px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     @media (max-width: 768px) { .review-header { flex-direction: column; } .buttons { flex-direction: column; } .btn { width: 100%; } }
   </style>
+  <link rel="stylesheet" href="design-system.css">
 </head>
 <body>
   <div id="loginOverlay" class="login-overlay">
     <div class="login-box">
       <div class="logo" style="font-size: 28px; margin-bottom: 10px;">TrustOurant</div>
       <h2>Accesso Admin</h2>
-      <input type="email" id="adminEmail" placeholder="Email admin">
-      <input type="password" id="adminPassword" placeholder="Password">
+      <label class="sr-only" for="adminEmail">Email amministratore</label>
+      <input type="email" id="adminEmail" placeholder="Email admin" autocomplete="username">
+      <label class="sr-only" for="adminPassword">Password</label>
+      <input type="password" id="adminPassword" placeholder="Password" autocomplete="current-password">
       <button onclick="admin.login()">Accedi</button>
       <div id="loginError" class="login-error">Credenziali non valide</div>
-      <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">Accedi con l'account admin (il tuo account, il primo registrato)</p>
+      <p style="margin-top: 15px; font-size: 12px; color: #56675e;">Accedi con l'account admin (il tuo account, il primo registrato)</p>
     </div>
   </div>
 
@@ -96,8 +100,8 @@
         <div class="stat-card"><div class="stat-label">Tasso Approvazione</div><div class="stat-value" id="statRate">-</div></div>
       </div>
       <div class="card">
-        <h3 style="color: #1f2937; margin-bottom: 15px;">Come funziona</h3>
-        <div style="color: #6b7280;">
+        <h3 style="color: #23372e; margin-bottom: 15px;">Come funziona</h3>
+        <div style="color: #56675e;">
           <p>Vai su <strong>"Review da Moderare"</strong> per approvare o rifiutare le recensioni segnalate dal filtro automatico.</p>
           <p>Vai su <strong>"Verificazioni"</strong> per confermare i dipendenti che hanno chiesto il badge verificato.</p>
           <p>Ogni azione invia automaticamente un'email di notifica all'utente interessato.</p>
@@ -124,7 +128,7 @@
     <div id="struttureSection" class="section">
       <h2 class="section-title">Gestione Strutture — Vitto/Alloggio e Stagionalità</h2>
       <div class="card">
-        <h3 style="color: #1f2937; margin-bottom: 15px;">Cerca una struttura</h3>
+        <h3 style="color: #23372e; margin-bottom: 15px;">Cerca una struttura</h3>
         <input type="text" id="struttureSearchInput" placeholder="Nome della struttura..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px;">
         <button class="btn btn-approve" onclick="admin.searchStrutture()">Cerca</button>
       </div>
@@ -134,8 +138,8 @@
     <div id="exportSection" class="section">
       <h2 class="section-title">Esporta Dati</h2>
       <div class="card">
-        <h3 style="color: #1f2937; margin-bottom: 15px;">Scarica tutte le review in CSV</h3>
-        <p style="color: #6b7280; margin-bottom: 20px;">Il file CSV puoi aprirlo con Excel o Google Fogli. Contiene tutte le review con dipendente, struttura, valutazioni e stato.</p>
+        <h3 style="color: #23372e; margin-bottom: 15px;">Scarica tutte le review in CSV</h3>
+        <p style="color: #56675e; margin-bottom: 20px;">Il file CSV puoi aprirlo con Excel o Google Fogli. Contiene tutte le review con dipendente, struttura, valutazioni e stato.</p>
         <button class="btn btn-export" onclick="admin.exportCsv()">Scarica CSV Review</button>
       </div>
     </div>
@@ -209,9 +213,9 @@
             <div class="card review-card">
               <div class="review-header">
                 <div><div class="review-user">${TrustourantUI.escapeHtml(r.nome || 'Utente')}</div><div class="review-date">${new Date(r.created_at).toLocaleString('it-IT')}</div></div>
-                <div style="font-weight: 600; color: #f59e0b;">IN MODERAZIONE</div>
+                <div style="font-weight: 600; color: #4c7046;">IN MODERAZIONE</div>
               </div>
-              <div style="color: #6b7280; font-size: 14px;">${TrustourantUI.escapeHtml(r.struttura_nome || 'Struttura #' + r.struttura_id)}</div>
+              <div style="color: #56675e; font-size: 14px;">${TrustourantUI.escapeHtml(r.struttura_nome || 'Struttura #' + r.struttura_id)}</div>
               <div class="ratings">
                 <div class="rating-item"><div class="rating-label">Responsabile diretto</div><div class="rating-value">${TrustourantUI.escapeHtml(r.valutazione_chef || '-')}</div></div>
                 <div class="rating-item"><div class="rating-label">Datore</div><div class="rating-value">${TrustourantUI.escapeHtml(r.valutazione_datore || '-')}</div></div>
@@ -292,11 +296,11 @@
             <div class="card review-card">
               <div class="review-header">
                 <div><div class="review-user">${TrustourantUI.escapeHtml(r.nome_referente || 'Non specificato')}</div><div class="review-date">${TrustourantUI.escapeHtml(r.email)} · ${new Date(r.created_at).toLocaleString('it-IT')}</div></div>
-                <div style="font-weight: 600; color: #f59e0b;">IN ATTESA</div>
+                <div style="font-weight: 600; color: #4c7046;">IN ATTESA</div>
               </div>
-              <div style="color: #6b7280; font-size: 14px;">Struttura: <strong>${TrustourantUI.escapeHtml(r.struttura_nome)}</strong> (${TrustourantUI.escapeHtml(r.città)})</div>
-              <div style="color: #6b7280; font-size: 14px;">Sito web registrato: ${TrustourantUI.escapeHtml(r.sito_web || 'nessuno')}</div>
-              <div style="color: #6b7280; font-size: 14px;">Dominio email richiesta: ${TrustourantUI.escapeHtml(r.email.split('@')[1])}</div>
+              <div style="color: #56675e; font-size: 14px;">Struttura: <strong>${TrustourantUI.escapeHtml(r.struttura_nome)}</strong> (${TrustourantUI.escapeHtml(r.città)})</div>
+              <div style="color: #56675e; font-size: 14px;">Sito web registrato: ${TrustourantUI.escapeHtml(r.sito_web || 'nessuno')}</div>
+              <div style="color: #56675e; font-size: 14px;">Dominio email richiesta: ${TrustourantUI.escapeHtml(r.email.split('@')[1])}</div>
               <div class="buttons">
                 <button class="btn btn-approve" onclick="admin.approveRisposta(${Number(r.id)})">Verifica e Attiva</button>
                 <button class="btn btn-reject" onclick="admin.rejectRisposta(${Number(r.id)})">Rifiuta</button>
@@ -331,10 +335,10 @@
           document.getElementById('struttureList').innerHTML = strutture.slice(0, 20).map(s => `
             <div class="card">
               <div class="review-user" style="margin-bottom: 5px;">${TrustourantUI.escapeHtml(s.nome)}</div>
-              <div style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">${TrustourantUI.escapeHtml(s.città)}, ${TrustourantUI.escapeHtml(s.provincia)}</div>
+              <div style="color: #56675e; font-size: 13px; margin-bottom: 15px;">${TrustourantUI.escapeHtml(s.città)}, ${TrustourantUI.escapeHtml(s.provincia)}</div>
               <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
                 <div style="flex: 1; min-width: 200px;">
-                  <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 5px;">Stagionalità</label>
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #56675e; margin-bottom: 5px;">Stagionalità</label>
                   <select id="stagionalita-${Number(s.id)}" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
                     <option value="" ${!s.stagionalita ? 'selected' : ''}>Non specificato</option>
                     <option value="stagionale" ${TrustourantUI.escapeHtml(s.stagionalita === 'stagionale' ? 'selected' : '')}>🏔️ Stagionale</option>
@@ -342,7 +346,7 @@
                   </select>
                 </div>
                 <div style="flex: 1; min-width: 200px;">
-                  <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 5px;">Vitto e Alloggio</label>
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #56675e; margin-bottom: 5px;">Vitto e Alloggio</label>
                   <input type="text" id="vitto-${Number(s.id)}" value="${TrustourantUI.escapeHtml(s.vitto_alloggio || '')}" placeholder="Es: Vitto e alloggio inclusi" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
                 </div>
               </div>

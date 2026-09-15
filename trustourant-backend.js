@@ -1096,7 +1096,7 @@ const jobsModule = require('./jobs')(app, db, { jwt, secret: JWT_SECRET });
 const jobs = { ...jobsModule, ready: Promise.all([migrationsReady, jobsModule.ready]) };
 
 // Serve only explicitly public files; never expose the database or server source.
-for (const file of ['index.html', 'privacy.html', 'lavoro.html', 'lavoro.js', 'lavoro.css', 'lavoro-demo.css', 'ui-security.js', 'trustourant-admin-fase4.html']) {
+for (const file of ['index.html', 'privacy.html', 'lavoro.html', 'lavoro.js', 'lavoro.css', 'lavoro-demo.css', 'design-system.css', 'public-home.js', 'ui-security.js', 'trustourant-admin-fase4.html']) {
   app.get('/' + file, (req, res) => res.sendFile(path.join(__dirname, file)));
 }
 

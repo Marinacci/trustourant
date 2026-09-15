@@ -13,7 +13,7 @@ test('Full backend starts, serves public job files, exports and deletes candidat
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
  const base=`http://127.0.0.1:${server.address().port}`;
  try {
-  for(const file of ['lavoro.html','lavoro.css','lavoro-demo.css','lavoro.js','index.html','privacy.html']) assert.equal((await fetch(base+'/'+file)).status,200);
+  for(const file of ['lavoro.html','lavoro.css','lavoro-demo.css','lavoro.js','design-system.css','public-home.js','index.html','privacy.html']) assert.equal((await fetch(base+'/'+file)).status,200);
   assert.equal((await fetch(base+'/trustourant-backend.js')).status,404);
   assert.equal((await fetch(base+'/trustourant.db')).status,404);
   const structure=await run("INSERT INTO strutture(nome,tipo,città,provincia,regione,sito_web) VALUES('Hotel Test','hotel','Merano','BZ','Trentino-Alto Adige','https://hotel.example.test')");
