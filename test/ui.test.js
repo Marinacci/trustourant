@@ -31,8 +31,39 @@ test('Public pages contain the full jobs path and scripts parse correctly', () =
   const jobs = new JSDOM(read('lavoro.html')).window.document;
   assert.ok(jobs.querySelector('form#searchForm'));
   assert.ok(jobs.querySelector('dialog#panel'));
+  assert.equal(jobs.querySelector('#demoBusiness')?.textContent, 'Prova demo azienda');
+  assert.ok(jobs.querySelector('link[href="lavoro-demo.css"]'));
   assert.match(read('lavoro.js'), /area=azienda/);
+  assert.match(read('lavoro.js'), /sessionStorage\.setItem\('trustourantDemoJobs'/);
+  assert.match(read('lavoro.js'), /nessuna azione modifica account, annunci o candidature reali/i);
   assert.match(read('index.html'), /TrustourantUI\.returnPath/);
+});
+
+test('Business demo is interactive and never calls protected business endpoints', async () => {
+  const dom = new JSDOM(read('lavoro.html'), { url:'https://trustourant.it/lavoro.html', runScripts:'outside-only' });
+  const { window } = dom;
+  const requested = [];
+  window.AbortSignal = global.AbortSignal;
+  window.fetch = async url => {
+    requested.push(String(url));
+    return { ok:true, json:async () => ({ jobs:[], total:0, page:1, page_size:20 }) };
+  };
+  const panel = window.document.getElementById('panel');
+  panel.showModal = () => { panel.open = true; };
+  panel.close = () => { panel.open = false; panel.dispatchEvent(new window.Event('close')); };
+  window.eval(read('lavoro.js'));
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  window.document.getElementById('demoBusiness').click();
+  assert.match(window.document.getElementById('panelTitle').textContent, /Hotel Demo Merano/);
+  assert.match(window.document.getElementById('panelContent').textContent, /dati fittizi/i);
+  assert.equal(window.document.querySelectorAll('[data-demo-candidates]').length, 2);
+  assert.equal(requested.filter(url => url.includes('/business/')).length, 0);
+
+  window.document.querySelector('[data-demo-candidates="demo-1"]').click();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.match(window.document.getElementById('panelContent').textContent, /Mario Rossi/);
+  assert.equal(requested.filter(url => url.includes('/business/')).length, 0);
 });
 
 test('Obsolete duplicate entry points redirect to the maintained frontend', () => {
