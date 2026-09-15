@@ -7,7 +7,7 @@
     "start": "node trustourant-backend.js",
     "dev": "node trustourant-backend.js",
     "test": "node --test test/*.test.js",
-    "postinstall": "node scripts/check-deployment-config.js"
+    "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [
     "reviews",
