@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+  <meta name="referrer" content="no-referrer">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TrustOurant - Admin Dashboard Fase 4</title>
@@ -116,7 +117,7 @@
 
     <div id="risposteSection" class="section">
       <h2 class="section-title">Account Aziendali da Verificare</h2>
-      <p style="color: #cbd5e1; margin-bottom: 20px; font-size: 14px;">Richieste di titolari che vogliono rispondere alle recensioni della propria struttura. Verifica che la persona sia davvero legittimata (es. controlla telefonicamente, o confronta con il sito web ufficiale della struttura) prima di approvare — una volta verificato, l'account potrà rispondere liberamente a tutte le recensioni della struttura.</p>
+      <p style="color: #cbd5e1; margin-bottom: 20px; font-size: 14px;">Richieste di titolari che vogliono rispondere alle recensioni, pubblicare annunci e ricevere candidature. Gli account verificati in passato soltanto tramite il dominio email richiedono una verifica manuale per accedere al recruiting. Verifica che la persona sia davvero legittimata (es. controlla telefonicamente, o confronta con il sito web ufficiale della struttura) prima di approvare — una volta verificato, l'account potrà rispondere alle recensioni della struttura, pubblicare annunci e consultare i candidati ai propri annunci.</p>
       <div id="risposteList"><div class="card"><div class="empty">Caricamento...</div></div></div>
     </div>
 
@@ -140,8 +141,9 @@
     </div>
   </div>
 
+  <script src="ui-security.js"></script>
   <script>
-    const API_URL = 'https://trustourant-backend.onrender.com/api';
+    const API_URL = ['localhost', '127.0.0.1'].includes(location.hostname) ? '/api' : 'https://trustourant-backend.onrender.com/api';
     const admin = {
       token: localStorage.getItem('admin_token'),
       init() {
@@ -154,6 +156,7 @@
           const res = await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
+          if (!data.user?.is_admin) throw new Error('Account senza accesso amministratore.');
           this.token = data.token;
           localStorage.setItem('admin_token', this.token);
           document.getElementById('loginOverlay').style.display = 'none';
@@ -177,6 +180,12 @@
           });
         });
       },
+      async mutate(url, options) {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        if (!response.ok) { this.showAlert(data.error || 'Operazione non riuscita', 'error'); throw new Error(data.error || 'Operazione non riuscita'); }
+        return data;
+      },
       headers() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` }; },
       async loadDashboard() {
         try {
@@ -199,20 +208,20 @@
           document.getElementById('reviewsList').innerHTML = reviews.map(r => `
             <div class="card review-card">
               <div class="review-header">
-                <div><div class="review-user">${r.nome || 'Utente'}</div><div class="review-date">${new Date(r.created_at).toLocaleString('it-IT')}</div></div>
+                <div><div class="review-user">${TrustourantUI.escapeHtml(r.nome || 'Utente')}</div><div class="review-date">${new Date(r.created_at).toLocaleString('it-IT')}</div></div>
                 <div style="font-weight: 600; color: #f59e0b;">IN MODERAZIONE</div>
               </div>
-              <div style="color: #6b7280; font-size: 14px;">${r.struttura_nome || 'Struttura #' + r.struttura_id}</div>
+              <div style="color: #6b7280; font-size: 14px;">${TrustourantUI.escapeHtml(r.struttura_nome || 'Struttura #' + r.struttura_id)}</div>
               <div class="ratings">
-                <div class="rating-item"><div class="rating-label">Responsabile diretto</div><div class="rating-value">${r.valutazione_chef || '-'}</div></div>
-                <div class="rating-item"><div class="rating-label">Datore</div><div class="rating-value">${r.valutazione_datore || '-'}</div></div>
-                <div class="rating-item"><div class="rating-label">Clima</div><div class="rating-value">${r.clima_lavoro || '-'}</div></div>
+                <div class="rating-item"><div class="rating-label">Responsabile diretto</div><div class="rating-value">${TrustourantUI.escapeHtml(r.valutazione_chef || '-')}</div></div>
+                <div class="rating-item"><div class="rating-label">Datore</div><div class="rating-value">${TrustourantUI.escapeHtml(r.valutazione_datore || '-')}</div></div>
+                <div class="rating-item"><div class="rating-label">Clima</div><div class="rating-value">${TrustourantUI.escapeHtml(r.clima_lavoro || '-')}</div></div>
               </div>
-              <div class="review-content">${r.commento || '(nessun commento)'}</div>
+              <div class="review-content">${TrustourantUI.escapeHtml(r.commento || '(nessun commento)')}</div>
               <div class="buttons">
-                <button class="btn btn-approve" onclick="admin.approveReview(${r.id})">Approva</button>
-                <button class="btn btn-reject" onclick="admin.rejectReview(${r.id})">Rifiuta</button>
-                <button class="btn btn-ban" onclick="admin.banUser(${r.user_id})">Banna Utente</button>
+                <button class="btn btn-approve" onclick="admin.approveReview(${Number(r.id)})">Approva</button>
+                <button class="btn btn-reject" onclick="admin.rejectReview(${Number(r.id)})">Rifiuta</button>
+                <button class="btn btn-ban" onclick="admin.banUser(${Number(r.user_id)})">Banna Utente</button>
               </div>
             </div>
           `).join('');
@@ -231,16 +240,16 @@
           document.getElementById('verificazioniList').innerHTML = verifs.map(v => `
             <div class="card">
               <div class="review-header">
-                <div><div class="review-user">${v.nome || 'Utente'}</div><div class="review-date">${v.email || ''}</div></div>
+                <div><div class="review-user">${TrustourantUI.escapeHtml(v.nome || 'Utente')}</div><div class="review-date">${TrustourantUI.escapeHtml(v.email || '')}</div></div>
                 <span class="verification-status">In Attesa</span>
               </div>
               <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 14px;">
-                <div><strong>Struttura:</strong> ${v.struttura_nome || '#' + v.struttura_id}</div>
-                <div><strong>Posizione:</strong> ${v.posizione}</div>
-                <div><strong>Periodo:</strong> ${v.periodo_inizio || '?'} - ${v.periodo_fine || 'Presente'}</div>
+                <div><strong>Struttura:</strong> ${TrustourantUI.escapeHtml(v.struttura_nome || '#' + v.struttura_id)}</div>
+                <div><strong>Posizione:</strong> ${TrustourantUI.escapeHtml(v.posizione)}</div>
+                <div><strong>Periodo:</strong> ${TrustourantUI.escapeHtml(v.periodo_inizio || '?')} - ${TrustourantUI.escapeHtml(v.periodo_fine || 'Presente')}</div>
               </div>
               <div class="buttons">
-                <button class="btn btn-approve" onclick="admin.approveVerif(${v.id})">Approva Verificazione</button>
+                <button class="btn btn-approve" onclick="admin.approveVerif(${Number(v.id)})">Approva Verificazione</button>
               </div>
             </div>
           `).join('');
@@ -249,25 +258,25 @@
         }
       },
       async approveReview(id) {
-        await fetch(`${API_URL}/admin/reviews/approva/${id}`, { method: 'POST', headers: this.headers() });
+        await this.mutate(`${API_URL}/admin/reviews/approva/${id}`, { method: 'POST', headers: this.headers() });
         this.showAlert('Review approvata e utente notificato via email', 'success');
         this.loadReviews();
       },
       async rejectReview(id) {
         const motivo = prompt('Motivo del rifiuto (opzionale):') || '';
-        await fetch(`${API_URL}/admin/reviews/rifiuta/${id}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ motivo }) });
+        await this.mutate(`${API_URL}/admin/reviews/rifiuta/${id}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ motivo }) });
         this.showAlert('Review rifiutata e utente notificato', 'success');
         this.loadReviews();
       },
       async banUser(id) {
         if (!confirm('Sicuro di voler bannare questo utente?')) return;
         const motivo = prompt('Motivo del ban:') || '';
-        await fetch(`${API_URL}/admin/users/ban/${id}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ motivo }) });
+        await this.mutate(`${API_URL}/admin/users/ban/${id}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ motivo }) });
         this.showAlert('Utente bannato', 'success');
         this.loadReviews();
       },
       async approveVerif(id) {
-        await fetch(`${API_URL}/admin/verificazione/approva/${id}`, { method: 'POST', headers: this.headers() });
+        await this.mutate(`${API_URL}/admin/verificazione/approva/${id}`, { method: 'POST', headers: this.headers() });
         this.showAlert('Verificazione approvata, badge assegnato ed email inviata', 'success');
         this.loadVerificazioni();
       },
@@ -282,15 +291,15 @@
           document.getElementById('risposteList').innerHTML = richieste.map(r => `
             <div class="card review-card">
               <div class="review-header">
-                <div><div class="review-user">${r.nome_referente || 'Non specificato'}</div><div class="review-date">${r.email} · ${new Date(r.created_at).toLocaleString('it-IT')}</div></div>
+                <div><div class="review-user">${TrustourantUI.escapeHtml(r.nome_referente || 'Non specificato')}</div><div class="review-date">${TrustourantUI.escapeHtml(r.email)} · ${new Date(r.created_at).toLocaleString('it-IT')}</div></div>
                 <div style="font-weight: 600; color: #f59e0b;">IN ATTESA</div>
               </div>
-              <div style="color: #6b7280; font-size: 14px;">Struttura: <strong>${r.struttura_nome}</strong> (${r.città})</div>
-              <div style="color: #6b7280; font-size: 14px;">Sito web registrato: ${r.sito_web || 'nessuno'}</div>
-              <div style="color: #6b7280; font-size: 14px;">Dominio email richiesta: ${r.email.split('@')[1]}</div>
+              <div style="color: #6b7280; font-size: 14px;">Struttura: <strong>${TrustourantUI.escapeHtml(r.struttura_nome)}</strong> (${TrustourantUI.escapeHtml(r.città)})</div>
+              <div style="color: #6b7280; font-size: 14px;">Sito web registrato: ${TrustourantUI.escapeHtml(r.sito_web || 'nessuno')}</div>
+              <div style="color: #6b7280; font-size: 14px;">Dominio email richiesta: ${TrustourantUI.escapeHtml(r.email.split('@')[1])}</div>
               <div class="buttons">
-                <button class="btn btn-approve" onclick="admin.approveRisposta(${r.id})">Verifica e Attiva</button>
-                <button class="btn btn-reject" onclick="admin.rejectRisposta(${r.id})">Rifiuta</button>
+                <button class="btn btn-approve" onclick="admin.approveRisposta(${Number(r.id)})">Verifica e Attiva</button>
+                <button class="btn btn-reject" onclick="admin.rejectRisposta(${Number(r.id)})">Rifiuta</button>
               </div>
             </div>
           `).join('');
@@ -299,13 +308,13 @@
         }
       },
       async approveRisposta(id) {
-        await fetch(`${API_URL}/admin/business/verifica/${id}`, { method: 'POST', headers: this.headers() });
+        await this.mutate(`${API_URL}/admin/business/verifica/${id}`, { method: 'POST', headers: this.headers() });
         this.showAlert('Account aziendale verificato', 'success');
         this.loadRisposte();
       },
       async rejectRisposta(id) {
         if (!confirm('Rifiutare questa richiesta di account aziendale?')) return;
-        await fetch(`${API_URL}/admin/business/rifiuta/${id}`, { method: 'POST', headers: this.headers() });
+        await this.mutate(`${API_URL}/admin/business/rifiuta/${id}`, { method: 'POST', headers: this.headers() });
         this.showAlert('Richiesta rifiutata', 'success');
         this.loadRisposte();
       },
@@ -321,23 +330,23 @@
           }
           document.getElementById('struttureList').innerHTML = strutture.slice(0, 20).map(s => `
             <div class="card">
-              <div class="review-user" style="margin-bottom: 5px;">${s.nome}</div>
-              <div style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">${s.città}, ${s.provincia}</div>
+              <div class="review-user" style="margin-bottom: 5px;">${TrustourantUI.escapeHtml(s.nome)}</div>
+              <div style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">${TrustourantUI.escapeHtml(s.città)}, ${TrustourantUI.escapeHtml(s.provincia)}</div>
               <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
                 <div style="flex: 1; min-width: 200px;">
                   <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 5px;">Stagionalità</label>
-                  <select id="stagionalita-${s.id}" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
+                  <select id="stagionalita-${Number(s.id)}" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
                     <option value="" ${!s.stagionalita ? 'selected' : ''}>Non specificato</option>
-                    <option value="stagionale" ${s.stagionalita === 'stagionale' ? 'selected' : ''}>🏔️ Stagionale</option>
-                    <option value="tutto_anno" ${s.stagionalita === 'tutto_anno' ? 'selected' : ''}>🏨 Tutto l'anno</option>
+                    <option value="stagionale" ${TrustourantUI.escapeHtml(s.stagionalita === 'stagionale' ? 'selected' : '')}>🏔️ Stagionale</option>
+                    <option value="tutto_anno" ${TrustourantUI.escapeHtml(s.stagionalita === 'tutto_anno' ? 'selected' : '')}>🏨 Tutto l'anno</option>
                   </select>
                 </div>
                 <div style="flex: 1; min-width: 200px;">
                   <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 5px;">Vitto e Alloggio</label>
-                  <input type="text" id="vitto-${s.id}" value="${s.vitto_alloggio || ''}" placeholder="Es: Vitto e alloggio inclusi" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
+                  <input type="text" id="vitto-${Number(s.id)}" value="${TrustourantUI.escapeHtml(s.vitto_alloggio || '')}" placeholder="Es: Vitto e alloggio inclusi" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
                 </div>
               </div>
-              <button class="btn btn-approve" onclick="admin.saveStrutturaInfo(${s.id})">Salva</button>
+              <button class="btn btn-approve" onclick="admin.saveStrutturaInfo(${Number(s.id)})">Salva</button>
             </div>
           `).join('');
         } catch (err) {
@@ -347,7 +356,7 @@
       async saveStrutturaInfo(id) {
         const stagionalita = document.getElementById(`stagionalita-${id}`).value;
         const vitto_alloggio = document.getElementById(`vitto-${id}`).value;
-        await fetch(`${API_URL}/admin/strutture/info/${id}`, { method: 'PUT', headers: this.headers(), body: JSON.stringify({ stagionalita, vitto_alloggio }) });
+        await this.mutate(`${API_URL}/admin/strutture/info/${id}`, { method: 'PUT', headers: this.headers(), body: JSON.stringify({ stagionalita, vitto_alloggio }) });
         this.showAlert('Struttura aggiornata', 'success');
       },
       exportCsv() {
