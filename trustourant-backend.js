@@ -32,8 +32,40 @@ const transporter = nodemailer.createTransport({
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = new Set([
+  'https://trustourant.it',
+  'https://www.trustourant.it',
+  'https://marinacci.github.io',
+  'https://trustourant-backend.onrender.com'
+]);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+    callback(new Error('Origine non autorizzata'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.disable('x-powered-by');
+app.use(express.json({ limit: '100kb' }));
+app.use((req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Referrer-Policy', 'no-referrer');
+  res.set('X-Frame-Options', 'DENY');
+  if (req.headers.authorization) res.set('Cache-Control', 'no-store');
+  next();
+});
+const validEmail = value => typeof value === 'string' && value.length <= 254 && /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(value);
+const validText = (value, min, max) => typeof value === 'string' && value.trim().length >= min && value.length <= max;
+const escapeEmailHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+app.use(['/api/auth/register', '/api/auth/login', '/api/business/registrati', '/api/business/login'], (req, res, next) => {
+  if (req.method !== 'POST') return next();
+  if (!validEmail(req.body.email) || !validText(req.body.password, 1, 1024)) return res.status(400).json({ error: 'Email o password non validi.' });
+  if (['/api/auth/register', '/api/business/registrati'].includes(req.originalUrl.split('?')[0]) &&
+      (req.body.password.length < 8 || Buffer.byteLength(req.body.password, 'utf8') > 72))
+    return res.status(400).json({ error: 'Usa una password di almeno 8 caratteri e massimo 72 byte.' });
+  next();
+});
 
 // Limite tentativi: max 8 tentativi ogni 15 minuti per indirizzo IP, sugli endpoint più sensibili
 const loginLimiter = rateLimit({
@@ -53,6 +85,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 
 // Crea le tabelle se non esistono
 db.serialize(() => {
+  db.run('PRAGMA foreign_keys = ON');
   // Tabella utenti
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,23 +201,21 @@ db.serialize(() => {
 
 // ============ MIGRAZIONE AUTOMATICA (aggiunge colonne mancanti su database vecchi) ============
 
+const migrationTasks = [];
 const aggiungiColonnaSeManca = (tabella, colonna, definizione) => {
-  db.run(`ALTER TABLE ${tabella} ADD COLUMN ${colonna} ${definizione}`, (err) => {
-    if (err) {
-      if (err.message.includes('duplicate column name')) {
-        // La colonna esiste già, va tutto bene
-      } else {
-        console.error(`Errore migrazione ${tabella}.${colonna}:`, err.message);
-      }
-    } else {
-      console.log(`✓ Aggiunta colonna mancante: ${tabella}.${colonna}`);
-    }
-  });
+  migrationTasks.push(new Promise((resolve, reject) => {
+    db.run(`ALTER TABLE ${tabella} ADD COLUMN ${colonna} ${definizione}`, (err) => {
+      if (err && !err.message.includes('duplicate column name')) return reject(err);
+      if (!err) console.log(`✓ Aggiunta colonna mancante: ${tabella}.${colonna}`);
+      resolve();
+    });
+  }));
 };
 
 aggiungiColonnaSeManca('strutture', 'bloccata', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('users', 'bannato', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('users', 'is_admin', 'INTEGER DEFAULT 0');
+aggiungiColonnaSeManca('users', 'token_version', 'INTEGER NOT NULL DEFAULT 0');
 aggiungiColonnaSeManca('reviews', 'email_notificato', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('verificazioni', 'email_notificato', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('strutture', 'vitto_alloggio', 'TEXT');
@@ -200,17 +231,10 @@ aggiungiColonnaSeManca('reviews', 'risposta_datore_nome', 'TEXT');
 aggiungiColonnaSeManca('reviews', 'risposta_datore_email', 'TEXT');
 aggiungiColonnaSeManca('users', 'reset_token', 'TEXT');
 aggiungiColonnaSeManca('users', 'reset_token_scadenza', 'DATETIME');
+const migrationsReady = Promise.all(migrationTasks);
 
-// Imposta l'account amministratore principale (unico account con accesso al pannello admin)
-setTimeout(() => {
-  db.run(`UPDATE users SET is_admin = 1 WHERE email = 'fulvietto.marinacci@gmail.com'`, function(err) {
-    if (err) {
-      console.error('Errore impostazione admin:', err.message);
-    } else if (this.changes > 0) {
-      console.log('✓ Account amministratore impostato: fulvietto.marinacci@gmail.com');
-    }
-  });
-}, 500);
+// Administrator privileges come only from the stored is_admin flag.
+// Never promote an account solely because it registers with a particular email.
 
 // ============ UTILITY EMAIL ============
 
@@ -236,7 +260,7 @@ app.post('/api/auth/register', loginLimiter, async (req, res) => {
   try {
     const { email, password, nome } = req.body;
 
-    if (!email || !password || !nome) {
+    if (!email || !password || !validText(nome, 2, 100)) {
       return res.status(400).json({ error: 'Email, password e nome sono obbligatori' });
     }
 
@@ -256,7 +280,7 @@ app.post('/api/auth/register', loginLimiter, async (req, res) => {
         // Invia email di benvenuto
         const emailHtml = `
           <h2>Benvenuto su TrustOurant!</h2>
-          <p>Ciao ${nome},</p>
+          <p>Ciao ${escapeEmailHtml(nome)},</p>
           <p>La tua registrazione è stata completata con successo.</p>
           <p>Adesso puoi:</p>
           <ul>
@@ -270,7 +294,7 @@ app.post('/api/auth/register', loginLimiter, async (req, res) => {
 
         sendEmail(email, 'Benvenuto su TrustOurant!', emailHtml);
 
-        const token = jwt.sign({ userId: this.lastID }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: this.lastID, tokenVersion: 0 }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ 
           message: 'Registrazione completata',
           token,
@@ -299,7 +323,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) return res.status(401).json({ error: 'Email o password errati' });
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user.id, tokenVersion: user.token_version || 0 }, JWT_SECRET, { expiresIn: '7d' });
       res.json({ 
         message: 'Login effettuato',
         token,
@@ -313,7 +337,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 
 app.post('/api/auth/richiedi-reset-password', loginLimiter, async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email obbligatoria' });
+  if (!validEmail(email)) return res.status(400).json({ error: 'Email non valida' });
 
   db.get('SELECT id, nome FROM users WHERE email = ?', [email], async (err, user) => {
     // Rispondiamo sempre allo stesso modo, anche se l'email non esiste, per non far capire a un estraneo quali email sono registrate
@@ -333,7 +357,7 @@ app.post('/api/auth/richiedi-reset-password', loginLimiter, async (req, res) => 
         'TrustOurant - Reimposta la tua password',
         `<div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
           <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
-          <p>Ciao ${user.nome},</p>
+          <p>Ciao ${escapeEmailHtml(user.nome)},</p>
           <p>Hai richiesto di reimpostare la tua password. Clicca sul pulsante qui sotto per sceglierne una nuova (il link è valido per 1 ora):</p>
           <a href="${resetLink}" style="display: inline-block; background: #ec4899; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin: 20px 0;">Reimposta Password</a>
           <p style="color: #6b7280; font-size: 13px;">Se non hai richiesto tu questa modifica, ignora semplicemente questa email: la tua password attuale resterà invariata.</p>
@@ -345,9 +369,9 @@ app.post('/api/auth/richiedi-reset-password', loginLimiter, async (req, res) => 
   });
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', loginLimiter, async (req, res) => {
   const { token, nuovaPassword } = req.body;
-  if (!token || !nuovaPassword) return res.status(400).json({ error: 'Dati mancanti' });
+  if (!validText(token, 1, 128) || !validText(nuovaPassword, 8, 72) || Buffer.byteLength(nuovaPassword, 'utf8') > 72) return res.status(400).json({ error: 'Dati mancanti' });
   if (nuovaPassword.length < 6) return res.status(400).json({ error: 'La password deve avere almeno 6 caratteri' });
 
   db.get('SELECT id, reset_token_scadenza FROM users WHERE reset_token = ?', [token], async (err, user) => {
@@ -358,8 +382,9 @@ app.post('/api/auth/reset-password', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(nuovaPassword, 10);
-    db.run('UPDATE users SET password = ?, reset_token = NULL, reset_token_scadenza = NULL WHERE id = ?', [hashedPassword, user.id], (err) => {
+    db.run('UPDATE users SET password = ?, reset_token = NULL, reset_token_scadenza = NULL, token_version = token_version + 1 WHERE id = ? AND reset_token = ?', [hashedPassword, user.id, token], function(err) {
       if (err) return res.status(500).json({ error: err.message });
+      if (!this.changes) return res.status(400).json({ error: 'Link già utilizzato.' });
       res.json({ message: 'Password reimpostata con successo. Ora puoi accedere con la nuova password.' });
     });
   });
@@ -367,12 +392,16 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 const verifyToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token mancante' });
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ error: 'Token non valido' });
-    req.userId = decoded.userId;
-    next();
+  if (!token) return res.status(401).json({ error: 'Accedi per continuare.' });
+  jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, decoded) => {
+    if (err || !Number.isSafeInteger(decoded?.userId) || decoded.userId < 1) return res.status(401).json({ error: 'Sessione non valida.' });
+    db.get('SELECT id, bannato, token_version FROM users WHERE id=?', [decoded.userId], (err, user) => {
+      if (err) return res.status(500).json({ error: 'Servizio temporaneamente non disponibile.' });
+      if (!user || (decoded.tokenVersion || 0) !== user.token_version) return res.status(401).json({ error: 'Sessione scaduta. Accedi di nuovo.' });
+      if (user.bannato && !['/api/users/me', '/api/users/me/export'].includes(req.path)) return res.status(403).json({ error: 'Account bloccato.' });
+      req.userId = user.id;
+      next();
+    });
   });
 };
 
@@ -437,7 +466,7 @@ app.post('/api/admin/verificazione/approva/:verificazione_id', verifyToken, isAd
       if (user) {
         const emailHtml = `
           <h2>✓ Verificazione Approvata!</h2>
-          <p>Ciao ${user.nome},</p>
+          <p>Ciao ${escapeEmailHtml(user.nome)},</p>
           <p>La tua richiesta di verificazione è stata <strong>approvata</strong>!</p>
           <p>Adesso avrai il badge <strong>✓ Verificato</strong> accanto al tuo nome quando scrivi review.</p>
           <p>Questo significa che la tua opinione è attendibile perché confermata.</p>
@@ -471,7 +500,7 @@ app.post('/api/admin/verificazione/rifiuta/:verificazione_id', verifyToken, isAd
       if (user) {
         const emailHtml = `
           <h2>❌ Verificazione Rifiutata</h2>
-          <p>Ciao ${user.nome},</p>
+          <p>Ciao ${escapeEmailHtml(user.nome)},</p>
           <p>La tua richiesta di verificazione è stata <strong>rifiutata</strong>.</p>
           <p><strong>Motivo:</strong> ${motivo || 'I dati forniti non corrispondono ai nostri controlli'}</p>
           <p>Puoi riprovare in qualsiasi momento con informazioni più precise.</p>
@@ -529,7 +558,7 @@ app.get('/api/strutture/:id', (req, res) => {
 
   db.get('SELECT * FROM strutture WHERE id = ?', [struturaId], (err, struttura) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!struttura) return res.status(404).json({ error: 'Struttura non trovata' });
+    if (!struttura || struttura.bloccata) return res.status(404).json({ error: 'Struttura non trovata' });
 
     db.all('SELECT r.*, u.nome, u.verificato FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.struttura_id = ? AND r.moderato = 1 AND r.respinto = 0 ORDER BY r.created_at DESC', [struturaId], (err, reviews) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -588,7 +617,10 @@ const controlloModerazione = (text) => {
 app.post('/api/reviews', verifyToken, (req, res) => {
   const { struttura_id, valutazione_chef, valutazione_datore, salario, ore_lavoro, clima_lavoro, commento, consiglio_direzione, rifaresti, colloquio_info, consiglierebbe } = req.body;
 
-  if (!struttura_id) return res.status(400).json({ error: 'ID struttura obbligatorio' });
+  if (!Number.isSafeInteger(Number(struttura_id)) || Number(struttura_id) < 1) return res.status(400).json({ error: 'ID struttura obbligatorio' });
+  if (![valutazione_chef, valutazione_datore, clima_lavoro].every(v => typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 5)) return res.status(400).json({ error: 'Le valutazioni devono essere numeri da 1 a 5.' });
+  if ([commento, consiglio_direzione, rifaresti, colloquio_info].some(v => v != null && !validText(v, 0, 6000)) ||
+      [salario, ore_lavoro].some(v => v != null && !validText(v, 0, 100))) return res.status(400).json({ error: 'Testo non valido o troppo lungo.' });
 
   const ratings = [valutazione_chef, valutazione_datore, clima_lavoro].filter(r => r);
   const rating_medio = ratings.length > 0 ? ratings.reduce((a, b) => a + b) / ratings.length : 0;
@@ -625,7 +657,7 @@ app.post('/api/reviews', verifyToken, (req, res) => {
           if (user) {
             const emailHtml = `
               <h2>✓ Review Pubblicata!</h2>
-              <p>Ciao ${user.nome},</p>
+              <p>Ciao ${escapeEmailHtml(user.nome)},</p>
               <p>La tua review è stata <strong>pubblicata</strong> con successo!</p>
               <p>Grazie per aver condiviso la tua esperienza con TrustOurant.</p>
             `;
@@ -678,7 +710,7 @@ app.post('/api/admin/reviews/approva/:review_id', verifyToken, isAdmin, (req, re
       if (user) {
         const emailHtml = `
           <h2>✓ Review Approvata!</h2>
-          <p>Ciao ${user.nome},</p>
+          <p>Ciao ${escapeEmailHtml(user.nome)},</p>
           <p>La tua review è stata <strong>approvata</strong> e pubblicata!</p>
           <p>Grazie per aver condiviso la tua esperienza con TrustOurant.</p>
         `;
@@ -708,7 +740,7 @@ app.post('/api/admin/reviews/rifiuta/:review_id', verifyToken, isAdmin, (req, re
       if (user) {
         const emailHtml = `
           <h2>❌ Review Rifiutata</h2>
-          <p>Ciao ${user.nome},</p>
+          <p>Ciao ${escapeEmailHtml(user.nome)},</p>
           <p>La tua review non è stata pubblicata.</p>
           <p><strong>Motivo:</strong> ${motivo || 'Contiene contenuti non appropriati'}</p>
           <p>Puoi scrivere una nuova review modificando il commento.</p>
@@ -737,7 +769,7 @@ app.post('/api/admin/users/ban/:user_id', verifyToken, isAdmin, (req, res) => {
 
     const emailHtml = `
       <h2>⛔ Account Bannato</h2>
-      <p>Ciao ${user.nome},</p>
+      <p>Ciao ${escapeEmailHtml(user.nome)},</p>
       <p>Il tuo account è stato <strong>bannato</strong> per violazione dei termini di servizio.</p>
       <p><strong>Motivo:</strong> ${motivo || 'Contenuti inappropriati'}</p>
     `;
@@ -772,7 +804,7 @@ function estraiDominio(url) {
   } catch { return null; }
 }
 
-app.post('/api/business/registrati', async (req, res) => {
+app.post('/api/business/registrati', loginLimiter, async (req, res) => {
   const { email, password, struttura_id, nome_referente, ruolo } = req.body;
 
   if (!email || !password || !struttura_id) return res.status(400).json({ error: 'Email, password e struttura sono obbligatori' });
@@ -797,7 +829,7 @@ app.post('/api/business/registrati', async (req, res) => {
             <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
               <h2 style="color: #ec4899;">🍽️ TrustOurant</h2>
               <p>Ciao,</p>
-              <p>Abbiamo ricevuto la tua richiesta di account aziendale per <strong>${struttura.nome}</strong>.</p>
+              <p>Abbiamo ricevuto la tua richiesta di account aziendale per <strong>${escapeEmailHtml(struttura.nome)}</strong>.</p>
               <p>Il nostro team verificherà manualmente la richiesta prima di attivarla, per garantire che solo il vero titolare possa rispondere alle recensioni. Riceverai una email di conferma appena verificato.</p>
             </div>`);
           return res.json({ message: 'Richiesta inviata. Un amministratore verificherà il tuo account a breve.', verificato: false });
@@ -830,8 +862,8 @@ const verifyBusinessToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Token mancante' });
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err || !decoded.businessId) return res.status(401).json({ error: 'Token non valido' });
+  jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, decoded) => {
+    if (err || !Number.isSafeInteger(decoded?.businessId) || decoded.businessId < 1) return res.status(401).json({ error: 'Token non valido' });
     req.businessId = decoded.businessId;
     req.businessStrutturaId = decoded.struttura_id;
     next();
@@ -842,7 +874,7 @@ app.post('/api/reviews/:review_id/rispondi', verifyBusinessToken, (req, res) => 
   const { risposta } = req.body;
   const reviewId = req.params.review_id;
 
-  if (!risposta || !risposta.trim()) return res.status(400).json({ error: 'Risposta obbligatoria' });
+  if (!validText(risposta, 1, 6000)) return res.status(400).json({ error: 'Risposta obbligatoria' });
 
   db.get('SELECT * FROM business_accounts WHERE id = ?', [req.businessId], (err, account) => {
     if (err || !account) return res.status(401).json({ error: 'Account non trovato' });
@@ -1043,10 +1075,28 @@ app.get('/api/stats/provincia', (req, res) => {
   );
 });
 
-const jobs = require('./jobs')(app, db, { jwt, secret: JWT_SECRET });
+app.get('/api/stats/distribuzione-rating', (req, res) => {
+  db.all(`SELECT CAST(ROUND(rating_medio) AS INTEGER) AS rating, COUNT(*) AS count FROM reviews
+    WHERE moderato=1 AND respinto=0 AND rating_medio BETWEEN 1 AND 5 GROUP BY CAST(ROUND(rating_medio) AS INTEGER)`, (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Statistiche non disponibili.' });
+    res.json([1,2,3,4,5].map(rating => ({ fascia: `${rating} stelle`, count: rows.find(r => r.rating === rating)?.count || 0 })));
+  });
+});
+app.get('/api/admin/stats-moderazione', verifyToken, isAdmin, (req, res) => {
+  db.get(`SELECT COUNT(*) AS total, SUM(CASE WHEN moderato=0 AND respinto=0 THEN 1 ELSE 0 END) AS pending,
+    SUM(CASE WHEN moderato=1 AND respinto=0 THEN 1 ELSE 0 END) AS approved,
+    SUM(CASE WHEN respinto=1 THEN 1 ELSE 0 END) AS rejected FROM reviews`, (err, row) => {
+    if (err) return res.status(500).json({ error: 'Statistiche non disponibili.' });
+    res.json({ total:row.total, pending:row.pending || 0, approved:row.approved || 0, rejected:row.rejected || 0,
+      tasso_approvazione:row.total ? Math.round((row.approved || 0)*100/row.total) : 0 });
+  });
+});
+
+const jobsModule = require('./jobs')(app, db, { jwt, secret: JWT_SECRET });
+const jobs = { ...jobsModule, ready: Promise.all([migrationsReady, jobsModule.ready]) };
 
 // Serve only explicitly public files; never expose the database or server source.
-for (const file of ['index.html', 'privacy.html', 'lavoro.html', 'lavoro.js', 'lavoro.css']) {
+for (const file of ['index.html', 'privacy.html', 'lavoro.html', 'lavoro.js', 'lavoro.css', 'ui-security.js', 'trustourant-admin-fase4.html']) {
   app.get('/' + file, (req, res) => res.sendFile(path.join(__dirname, file)));
 }
 
@@ -1133,6 +1183,18 @@ app.delete('/api/users/me', verifyToken, (req, res) => {
   });
 }); 
 
+
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/api/health', async (req, res) => {
+  try {
+    await jobs.ready;
+    db.get('SELECT 1 AS ok', err => res.status(err ? 503 : 200).json({ status: err ? 'unavailable' : 'ok' }));
+  } catch { res.status(503).json({ status: 'unavailable' }); }
+});
+app.use((err, req, res, next) => {
+  if (err?.message === 'Origine non autorizzata') return res.status(403).json({ error: 'Origine non autorizzata.' });
+  next(err);
+});
 
 // ============ SERVER ============
 

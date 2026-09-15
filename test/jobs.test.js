@@ -17,7 +17,7 @@ async function request(path,{token,method='GET',body}={}){
  return {status:res.status,data:await res.json()};
 }
 before(async()=>{
- await run('CREATE TABLE users(id INTEGER PRIMARY KEY,nome TEXT,email TEXT,bannato INTEGER DEFAULT 0)');
+ await run('CREATE TABLE users(id INTEGER PRIMARY KEY,nome TEXT,email TEXT,bannato INTEGER DEFAULT 0,token_version INTEGER DEFAULT 0)');
  await run('CREATE TABLE strutture(id INTEGER PRIMARY KEY,nome TEXT,città TEXT,provincia TEXT,tipo TEXT,bloccata INTEGER DEFAULT 0)');
  await run('CREATE TABLE business_accounts(id INTEGER PRIMARY KEY,struttura_id INTEGER,verificato INTEGER,metodo_verifica TEXT)');
  await run("INSERT INTO users(id,nome,email) VALUES(1,'Candidato','candidato@example.test'),(2,'Altro','altro@example.test')");

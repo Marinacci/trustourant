@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+  <meta name="referrer" content="no-referrer">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TrustOurant - Fase 3 con Verificazioni e Statistiche</title>
@@ -437,7 +438,6 @@
   <header>
     <div class="container">
       <div class="logo">🍽️ TrustOurant</div>
-      <a href="lavoro.html" style="color: #be185d; font-weight: 700; margin: 0 12px;">Trova lavoro</a>
       <nav id="mainNav">
         <button class="nav-btn active" data-tab="ricerca">Ricerca</button>
         <button class="nav-btn" data-tab="classifica">Classifica</button>
@@ -512,11 +512,11 @@
         <form id="resetPasswordForm">
           <div class="form-group">
             <label>Nuova Password</label>
-            <input type="password" id="newPassword" minlength="6" required>
+            <input type="password" id="newPassword" minlength="8" required>
           </div>
           <div class="form-group">
             <label>Conferma Nuova Password</label>
-            <input type="password" id="confirmNewPassword" minlength="6" required>
+            <input type="password" id="confirmNewPassword" minlength="8" required>
           </div>
           <button type="submit" class="submit-btn">Reimposta Password</button>
         </form>
@@ -566,7 +566,7 @@
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="businessRegisterPassword" minlength="6" required>
+            <input type="password" id="businessRegisterPassword" minlength="8" required>
           </div>
           <button type="submit" class="submit-btn">Richiedi Account Aziendale</button>
         </form>
@@ -589,7 +589,7 @@
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="registerPassword" required>
+            <input type="password" minlength="8" id="registerPassword" required>
           </div>
           <button type="submit" class="submit-btn">Registrati</button>
         </form>
@@ -756,23 +756,23 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script src="ui-security.js"></script>
   <script>
-    const API_URL = 'https://trustourant-backend.onrender.com/api';
+    const API_URL = ['localhost', '127.0.0.1'].includes(location.hostname) ? '/api' : 'https://trustourant-backend.onrender.com/api';
     let chartRegioni, chartDistribuzione, chartProvince;
 
     const app = {
       token: localStorage.getItem('token'),
-      user: JSON.parse(localStorage.getItem('user') || 'null'),
+      user: TrustourantUI.readStoredObject('user'),
       businessToken: localStorage.getItem('businessToken'),
-      business: JSON.parse(localStorage.getItem('business') || 'null'),
+      business: TrustourantUI.readStoredObject('business'),
 
       // Trasforma testo scritto dagli utenti in testo "sicuro" da mostrare a schermo,
       // impedendo che qualcuno possa nascondere codice dannoso dentro una recensione
-      esc(testo) {
-        if (testo === null || testo === undefined) return '';
-        const div = document.createElement('div');
-        div.textContent = String(testo);
-        return div.innerHTML;
+      esc: TrustourantUI.escapeHtml,
+      returnToJobs() {
+        const next = TrustourantUI.returnPath(location.search);
+        if (next) location.assign(next);
       },
 
       init() {
@@ -931,11 +931,15 @@
         try {
           const res = await fetch(`${API_URL}/strutture?nome=${encodeURIComponent(nome)}`);
           const strutture = await res.json();
-          resultsDiv.innerHTML = strutture.slice(0, 8).map(s => `
-            <div onclick="app.selezionaStrutturaBusiness(${s.id}, '${app.esc(s.nome).replace(/'/g, "\\'")}')" style="padding: 8px; background: #f9fafb; border-radius: 6px; margin-bottom: 4px; cursor: pointer; font-size: 14px;">
-              ${app.esc(s.nome)} — ${app.esc(s.città)}
-            </div>
-          `).join('');
+          resultsDiv.replaceChildren();
+          strutture.slice(0, 8).forEach(s => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = `${s.nome} — ${s.città}`;
+            button.style.cssText = 'display:block;padding:8px;margin-bottom:4px;width:100%;text-align:left;cursor:pointer;';
+            button.addEventListener('click', () => app.selezionaStrutturaBusiness(s.id, s.nome));
+            resultsDiv.append(button);
+          });
         } catch (err) { resultsDiv.innerHTML = ''; }
       },
 
@@ -964,6 +968,8 @@
           this.business = data.business;
           localStorage.setItem('businessToken', data.token);
           localStorage.setItem('business', JSON.stringify(data.business));
+          this.updateUI();
+          this.returnToJobs();
 
           this.showAlert('businessAlert', data.business.verificato ? `Accesso effettuato come ${data.business.struttura_nome}` : 'Accesso effettuato — il tuo account è ancora in attesa di verifica', 'success');
         } catch (err) {
@@ -1019,6 +1025,7 @@
           localStorage.setItem('token', this.token);
           localStorage.setItem('user', JSON.stringify(this.user));
           this.updateUI();
+          this.returnToJobs();
         } catch (err) {
           this.showAlert('loginAlert', err.message, 'error');
         }
@@ -1045,6 +1052,7 @@
           localStorage.setItem('token', this.token);
           localStorage.setItem('user', JSON.stringify(this.user));
           this.updateUI();
+          this.returnToJobs();
         } catch (err) {
           this.showAlert('registerAlert', err.message, 'error');
         }
@@ -1072,19 +1080,19 @@
           } else {
             html = '<div class="strutture-grid">';
             strutture.forEach(s => {
-              const stars = '★'.repeat(Math.round(s.rating)) + '☆'.repeat(5 - Math.round(s.rating));
+              const stars = '★'.repeat(Math.round(Math.max(0, Math.min(5, TrustourantUI.number(s.rating))))) + '☆'.repeat(5 - Math.round(Math.max(0, Math.min(5, TrustourantUI.number(s.rating)))));
               html += `
                 <div class="struttura-card" style="cursor: pointer;" onclick="app.viewStruttura(${s.id})">
                   <h3>${app.esc(s.nome)}</h3>
                   <div class="struttura-info">
-                    <div><strong>${s.tipo}</strong></div>
+                    <div><strong>${app.esc(s.tipo)}</strong></div>
                     <div>${app.esc(s.città)}, ${app.esc(s.provincia)}</div>
                   </div>
                   <div class="rating">
                     <span class="stars">${stars}</span>
-                    <span class="rating-value">${s.rating.toFixed(1)}</span>
+                    <span class="rating-value">${TrustourantUI.number(s.rating).toFixed(1)}</span>
                   </div>
-                  <div style="font-size: 12px; color: #9ca3af;">${s.num_reviews} review</div>
+                  <div style="font-size: 12px; color: #9ca3af;">${app.esc(s.num_reviews)} review</div>
                   ${(s.stagionalita || s.vitto_alloggio) ? `
                   <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
                     ${s.stagionalita === 'stagionale' ? '<span style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px;">🏔️ Stagionale</span>' : ''}
@@ -1113,20 +1121,20 @@
 
           let html = `
             <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 30px;">
-              <h1 style="color: #1f2937; margin-bottom: 20px;">${data.struttura.nome}</h1>
+              <h1 style="color: #1f2937; margin-bottom: 20px;">${app.esc(data.struttura.nome)}</h1>
               
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
                   <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Tipo</div>
-                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${data.struttura.tipo}</div>
+                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${app.esc(data.struttura.tipo)}</div>
                 </div>
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
                   <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Ubicazione</div>
-                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${data.struttura.città}, ${data.struttura.provincia}</div>
+                  <div style="font-size: 16px; color: #1f2937; font-weight: 600;">${app.esc(data.struttura.città)}, ${app.esc(data.struttura.provincia)}</div>
                 </div>
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
                   <div style="font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 5px;">Rating</div>
-                  <div style="font-size: 28px; color: #f59e0b; font-weight: 700;">★ ${data.struttura.rating.toFixed(1)}</div>
+                  <div style="font-size: 28px; color: #f59e0b; font-weight: 700;">★ ${TrustourantUI.number(data.struttura.rating).toFixed(1)}</div>
                 </div>
                 ${data.struttura.stagionalita ? `
                 <div style="background: #fef3c7; padding: 15px; border-radius: 8px;">
@@ -1137,7 +1145,7 @@
                 ${data.struttura.vitto_alloggio ? `
                 <div style="background: #dcfce7; padding: 15px; border-radius: 8px;">
                   <div style="font-size: 12px; text-transform: uppercase; color: #166534; font-weight: 600; margin-bottom: 5px;">Vitto e Alloggio</div>
-                  <div style="font-size: 16px; color: #166534; font-weight: 600;">${data.struttura.vitto_alloggio}</div>
+                  <div style="font-size: 16px; color: #166534; font-weight: 600;">${app.esc(data.struttura.vitto_alloggio)}</div>
                 </div>
                 ` : ''}
               </div>
@@ -1218,9 +1226,9 @@
                     <span style="color: #9ca3af; font-size: 12px;">${new Date(r.created_at).toLocaleDateString('it-IT')}</span>
                   </div>
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; font-size: 13px; color: #6b7280;">
-                    <div>Responsabile diretto: ★ ${r.valutazione_chef}</div>
-                    <div>Datore: ★ ${r.valutazione_datore}</div>
-                    <div>Clima: ★ ${r.clima_lavoro}</div>
+                    <div>Responsabile diretto: ★ ${app.esc(r.valutazione_chef)}</div>
+                    <div>Datore: ★ ${app.esc(r.valutazione_datore)}</div>
+                    <div>Clima: ★ ${app.esc(r.clima_lavoro)}</div>
                     ${r.salario ? `<div>Salario: ${app.esc(r.salario)}</div>` : ''}
                     ${r.ore_lavoro ? `<div>Ore: ${app.esc(r.ore_lavoro)}</div>` : ''}
                   </div>
@@ -1353,7 +1361,7 @@
           }
 
           list.innerHTML = strutture.map((s, i) => {
-            const stars = '★'.repeat(Math.round(s.rating)) + '☆'.repeat(5 - Math.round(s.rating));
+            const stars = '★'.repeat(Math.round(Math.max(0, Math.min(5, TrustourantUI.number(s.rating))))) + '☆'.repeat(5 - Math.round(Math.max(0, Math.min(5, TrustourantUI.number(s.rating)))));
             return `
               <div class="struttura-card" style="cursor: pointer; display: flex; align-items: center; gap: 15px;" onclick="app.viewStruttura(${s.id})">
                 <div style="font-size: 22px; font-weight: 700; color: #ec4899; min-width: 40px;">#${i + 1}</div>
@@ -1362,9 +1370,9 @@
                   <div style="color: #6b7280; font-size: 13px;">${app.esc(s.città)}, ${app.esc(s.provincia)}</div>
                   <div class="rating">
                     <span class="stars">${stars}</span>
-                    <span class="rating-value">${s.rating.toFixed(1)}</span>
+                    <span class="rating-value">${TrustourantUI.number(s.rating).toFixed(1)}</span>
                   </div>
-                  <div style="font-size: 12px; color: #9ca3af;">${s.num_reviews} review</div>
+                  <div style="font-size: 12px; color: #9ca3af;">${app.esc(s.num_reviews)} review</div>
                 </div>
               </div>
             `;
@@ -1527,7 +1535,7 @@
               html += `
                 <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${v.verificato === 1 ? '#10b981' : '#fbbf24'};">
                   <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">${app.esc(v.posizione)}</div>
-                  <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">Periodo: ${v.periodo_inizio} ${v.periodo_fine ? ' - ' + v.periodo_fine : ''}</div>
+                  <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">Periodo: ${app.esc(v.periodo_inizio)} ${app.esc(v.periodo_fine ? ' - ' + v.periodo_fine : '')}</div>
                   <span class="status-badge ${badge}">${testo}</span>
                 </div>
               `;
@@ -1553,7 +1561,7 @@
           } else {
             html = reviews.map(r => `
               <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ec4899;">
-                <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">Rating Medio: ${r.rating_medio?.toFixed(1)}</div>
+                <div style="font-weight: 600; color: #1f2937; margin-bottom: 10px;">Rating Medio: ${TrustourantUI.number(r.rating_medio).toFixed(1)}</div>
                 <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
                   ${r.moderato === 1 ? '✓ Pubblicata' : '⏳ In moderazione'}
                 </div>

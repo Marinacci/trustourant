@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node trustourant-backend.js",
     "dev": "node trustourant-backend.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "postinstall": "node scripts/check-deployment-config.js"
   },
   "keywords": [
     "reviews",
@@ -17,12 +18,15 @@
   "author": "Fulvio Marinacci",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
-    "cors": "^2.8.5",
-    "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.0",
-    "sqlite3": "^5.1.6",
-    "nodemailer": "^6.9.7"
+    "nodemailer": "^10.0.10",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
   }
 }

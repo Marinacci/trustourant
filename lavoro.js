@@ -24,8 +24,12 @@
     return panelVersion;
   }
   function panelError(err) { $('panelStatus').className = 'error'; $('panelStatus').textContent = errorText(err); }
+  function loginUrl(type, id) {
+    const next = type === 'business' ? 'lavoro.html?area=azienda' : id ? `lavoro.html?annuncio=${id}` : 'lavoro.html';
+    return 'index.html?next=' + encodeURIComponent(next) + (type === 'business' ? '#aziende' : '');
+  }
   function login(type) {
-    openPanel('Accedi per continuare', `<p>Usa il tuo account ${type === 'business' ? 'aziendale' : 'lavoratore'} Trustourant. Dopo l’accesso torna alla sezione Trova lavoro.</p><a class="button" href="index.html${type === 'business' ? '#aziende' : ''}">Accedi o registrati</a>`);
+    openPanel('Accedi per continuare', `<p>Usa il tuo account ${type === 'business' ? 'aziendale' : 'lavoratore'} Trustourant. Dopo l’accesso tornerai qui automaticamente.</p><a class="button" href="${loginUrl(type)}">Accedi o registrati</a>`);
   }
   function details(job) {
     return `<p class="location">${escape(job.struttura_nome)} · ${escape(job.citta)} (${escape(job.provincia)})</p><p class="salary">€ ${money(job.salario_min)}–${money(job.salario_max)} <small>${escape(job.salario_tipo)} / mese</small></p><div class="tags"><span class="tag">${escape(job.contratto)}</span><span class="tag">${job.ore_settimana} ore / settimana</span><span class="tag">${job.giorni_settimana} giorni / settimana</span><span class="tag">${job.mensilita} mensilità</span><span class="tag">${job.alloggio ? 'Alloggio disponibile' : 'Alloggio non previsto'}</span></div>`;
@@ -53,7 +57,8 @@
     try {
       const job = await request('/jobs/' + encodeURIComponent(id));
       if (version !== panelVersion) return;
-      openPanel(job.titolo, `${details(job)}<p class="description">${escape(job.descrizione)}</p><p class="muted">Annuncio valido fino al ${date(job.scadenza)}. Chiarisci eventuali costi di alloggio, turni e dettagli della retribuzione durante il colloquio.</p><button id="shareJob" class="secondary">Copia link annuncio</button><hr><h3>Presentati all’azienda</h3>${token('worker') ? '<form id="applyForm"><label>Esperienza, competenze e disponibilità<textarea name="messaggio" minlength="20" maxlength="3000" required placeholder="Racconta la tua esperienza e quando potresti iniziare…"></textarea></label><p class="muted">Evita dati sanitari, documenti d’identità e altre informazioni non necessarie.</p><label class="check"><input name="consenso" type="checkbox" required>Confermo di voler condividere nome, email e presentazione con questa azienda per la candidatura.</label><a href="privacy.html" target="_blank" rel="noopener">Leggi l’informativa privacy</a><button type="submit">Invia candidatura</button></form>' : '<p>Accedi con un account lavoratore per inviare la tua candidatura.</p><a class="button" href="index.html">Accedi o registrati</a>'}`);
+      openPanel(job.titolo, `${details(job)}<p class="description">${escape(job.descrizione)}</p><p class="muted">Annuncio valido fino al ${date(job.scadenza)}. Chiarisci eventuali costi di alloggio, turni e dettagli della retribuzione durante il colloquio.</p><button id="shareJob" class="secondary">Copia link annuncio</button><hr><h3>Presentati all’azienda</h3>${token('worker') ? '<form id="applyForm"><label>Esperienza, competenze e disponibilità<textarea name="messaggio" minlength="20" maxlength="3000" required placeholder="Racconta la tua esperienza e quando potresti iniziare…"></textarea></label><p class="muted">Evita dati sanitari, documenti d’identità e altre informazioni non necessarie.</p><label class="check"><input name="consenso" type="checkbox" required>Confermo di voler condividere nome, email e presentazione con questa azienda per la candidatura.</label><a href="privacy.html" target="_blank" rel="noopener">Leggi l’informativa privacy</a><button type="submit">Invia candidatura</button></form>' : '<p>Accedi con un account lavoratore per inviare la tua candidatura.</p><a id="jobLogin" class="button" href="index.html">Accedi o registrati</a>'}`);
+      if ($('jobLogin')) $('jobLogin').href = loginUrl('worker', job.id);
       $('shareJob').onclick = async () => {
         const url = new URL('lavoro.html', location.href); url.searchParams.set('annuncio', job.id);
         try { await navigator.clipboard.writeText(url.href); $('panelStatus').textContent = 'Link copiato.'; }
@@ -125,5 +130,5 @@
   $('previousPage').onclick=()=>{page--;search();}; $('nextPage').onclick=()=>{page++;search();};
   $('myApplications').onclick=applications; $('businessArea').onclick=businessArea; $('openPublish').onclick=businessArea;
   $('closePanel').onclick=()=>$('panel').close(); $('panel').addEventListener('close',()=>{panelVersion++;});
-  search(); const id=new URLSearchParams(location.search).get('annuncio'); if (id && /^\d+$/.test(id)) showJob(id);
+  search(); const params=new URLSearchParams(location.search), id=params.get('annuncio'); if (id && /^\d+$/.test(id)) showJob(id); else if (params.get('area') === 'azienda') businessArea();
 })();

@@ -26,12 +26,14 @@ test('Full backend starts, serves public job files, exports and deletes candidat
   assert.equal((await fetch(base+'/api/admin/business/verifica/'+oldAccount.lastID,{headers:adminHeaders,method:'POST'})).status,200);
   const authorized=await fetch(base+'/api/business/jobs',{headers:{Authorization:`Bearer ${jwt.sign({businessId:oldAccount.lastID},process.env.JWT_SECRET)}`}});assert.equal(authorized.status,200);
   const user=await run("INSERT INTO users(nome,email,password) VALUES('Candidato locale','local@example.test','not-a-login')");
-  await run("INSERT INTO job_applications(job_id,user_id,messaggio) VALUES(999,?,'Presentazione locale di prova')",[user.lastID]);
+  const job=await run("INSERT INTO jobs(business_id,titolo,descrizione,contratto,salario_min,salario_max,salario_tipo,mensilita,ore_settimana,giorni_settimana) VALUES(?,'Chef test','Descrizione completa della posizione di lavoro.','indeterminato',2500,3000,'netto',13,40,5)",[oldAccount.lastID]);
+  await run("INSERT INTO job_applications(job_id,user_id,messaggio) VALUES(?,?,'Presentazione locale di prova')",[job.lastID,user.lastID]);
   const headers={Authorization:`Bearer ${jwt.sign({userId:user.lastID},process.env.JWT_SECRET)}`};
   const exported=await fetch(base+'/api/users/me/export',{headers});assert.equal(exported.status,200);
   assert.equal((await exported.json()).candidature.length,1);
   assert.equal((await fetch(base+'/api/users/me',{headers,method:'DELETE'})).status,200);
   const count=await new Promise((resolve,reject)=>db.get('SELECT COUNT(*) AS n FROM job_applications',(err,row)=>err?reject(err):resolve(row.n)));assert.equal(count,0);
+  const blockedOrigin=await fetch(base+'/api/health',{headers:{Origin:'https://attacker.example'}});assert.equal(blockedOrigin.status,403);
  } finally {
   await new Promise(resolve=>server.close(resolve));
   // Let the existing delayed admin initialization finish before closing this test DB.

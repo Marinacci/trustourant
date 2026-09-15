@@ -44,13 +44,15 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
   };
   const identity = (req, field) => {
     try {
-      const decoded = jwt.verify((req.headers.authorization || '').replace(/^Bearer /, ''), secret);
+      const decoded = jwt.verify((req.headers.authorization || '').replace(/^Bearer /, ''), secret, { algorithms: ['HS256'] });
+      req.authClaims = decoded;
       if (!Number.isSafeInteger(decoded[field]) || decoded[field] < 1) throw new Error();
       return decoded[field];
     } catch { throw failure(401, 'Accedi con il tuo account per continuare.'); }
   };
   const worker = async req => {
-    const user = await get('SELECT id, nome, email, bannato FROM users WHERE id = ?', [identity(req, 'userId')]);
+    const user = await get('SELECT id, nome, email, bannato, token_version FROM users WHERE id = ?', [identity(req, 'userId')]);
+    if (user && (req.authClaims.tokenVersion || 0) !== user.token_version) throw failure(401, 'Sessione scaduta. Accedi di nuovo.');
     if (!user || user.bannato) throw failure(403, 'Account non disponibile.');
     return user;
   };
@@ -72,6 +74,9 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
   const joins = `FROM jobs j JOIN business_accounts b ON b.id=j.business_id JOIN strutture s ON s.id=b.struttura_id`;
   const visible = `j.stato='aperto' AND j.scadenza > datetime('now') AND b.verificato=1 AND b.metodo_verifica='verifica_manuale_admin' AND COALESCE(s.bloccata,0)=0`;
   const fields = `j.*, s.nome AS struttura_nome, s.città AS citta, s.provincia, s.tipo AS struttura_tipo`;
+
+  const writeLimiter = require('express-rate-limit')({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Troppe richieste. Riprova tra qualche minuto.' } });
+  app.use(['/api/jobs', '/api/business/jobs', '/api/me/applications'], (req, res, next) => req.method === 'GET' ? next() : writeLimiter(req, res, next));
 
   app.get('/api/jobs', route(async (req, res) => {
     const where = [visible], params = [];
