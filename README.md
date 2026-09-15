@@ -23,6 +23,10 @@ La pagina `lavoro.html` usa il backend Render già esistente ed è collegata dal
 - Le candidature sono incluse nell'esportazione account esistente; un trigger le elimina quando viene cancellato l'utente.
 - Nessun invio automatico di email, nessun pagamento e nessun annuncio fittizio.
 
+### Demo aziendale
+
+Il pulsante `Prova demo azienda` apre un ambiente dimostrativo nel browser con annunci e candidature chiaramente fittizi. È possibile simulare la pubblicazione e la chiusura di annunci e consultare profili dimostrativi. La demo usa soltanto `sessionStorage`: non chiama gli endpoint aziendali e non modifica il database reale. È apribile anche con `lavoro.html?demo=azienda`.
+
 Lo schema aggiunge `jobs`, `job_applications`, indici e un trigger. Il server attende la creazione del nuovo schema prima di accettare connessioni. Non vengono modificati i dati esistenti delle recensioni.
 
 ## Pubblicazione
