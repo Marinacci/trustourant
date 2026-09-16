@@ -25,6 +25,10 @@ test('Full backend starts, serves public job files, exports and deletes candidat
   assert.equal((await (await fetch(base+"/api/strutture?nome='%20OR%201%3D1%20--")).json()).length,0);
   const registration=await fetch(base+'/api/business/registrati',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'direttore@hotel.example.test',password:'local-test-password',struttura_id:structure.lastID})});
   assert.equal(registration.status,200);assert.equal((await registration.json()).verificato,false);
+  const resetRequest=await fetch(base+'/api/business/richiedi-reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'direttore@hotel.example.test'})});assert.equal(resetRequest.status,200);
+  const businessReset=await new Promise((resolve,reject)=>db.get("SELECT reset_token FROM business_accounts WHERE email='direttore@hotel.example.test'",(err,row)=>err?reject(err):resolve(row)));
+  assert.ok(businessReset.reset_token);
+  assert.equal((await fetch(base+'/api/business/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:businessReset.reset_token,nuovaPassword:'nuova-password-sicura'})})).status,200);
   const oldAccount=await run("INSERT INTO business_accounts(email,password,struttura_id,verificato,metodo_verifica) VALUES('old@example.test','not-a-login',?,1,'dominio_email_automatico')",[structure.lastID]);
   const admin=await run("INSERT INTO users(nome,email,password,is_admin) VALUES('Admin test','admin@example.test','not-a-login',1)");
   const adminHeaders={Authorization:`Bearer ${jwt.sign({userId:admin.lastID},process.env.JWT_SECRET)}`};

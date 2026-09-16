@@ -550,6 +550,13 @@
             <input type="password" id="businessLoginPassword" required>
           </div>
           <button type="submit" class="submit-btn">Accedi come Azienda</button>
+          <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="app.showBusinessReset(); return false;" style="color: #234c3b; font-size: 14px; text-decoration: underline;">Password aziendale dimenticata?</a></p>
+        </form>
+
+        <form id="businessResetRequestForm" style="display: none;">
+          <p style="color: #56675e; font-size: 14px;">Inserisci l’email aziendale: se è registrata riceverai un link valido un’ora.</p>
+          <div class="form-group"><label>Email aziendale</label><input type="email" id="businessResetEmail" required></div>
+          <button type="submit" class="submit-btn">Invia link di recupero</button>
         </form>
 
         <form id="businessRegisterForm" style="display: none;">
@@ -788,8 +795,9 @@
         const params = new URLSearchParams(window.location.search);
         if (TrustourantUI.returnPath(location.search) && !this.token && location.hash !== '#aziende') this.showSection('login');
         if (location.hash === '#aziende') this.showSection('businessClaim');
-        if (params.get('reset_token')) {
+        if (params.get('reset_token') || params.get('business_reset_token')) {
           this.showSection('resetPassword');
+          if (params.get('business_reset_token')) document.querySelector('#resetPasswordSection h1').textContent = 'Scegli una Nuova Password Aziendale';
         }
       },
 
@@ -806,6 +814,7 @@
         document.getElementById('forgotPasswordForm').addEventListener('submit', (e) => this.handleForgotPassword(e));
         document.getElementById('resetPasswordForm').addEventListener('submit', (e) => this.handleResetPassword(e));
         document.getElementById('businessLoginForm').addEventListener('submit', (e) => this.handleBusinessLogin(e));
+        document.getElementById('businessResetRequestForm').addEventListener('submit', (e) => this.handleBusinessResetRequest(e));
         document.getElementById('businessRegisterForm').addEventListener('submit', (e) => this.handleBusinessRegister(e));
         document.getElementById('searchBtn').addEventListener('click', () => this.searchStrutture());
         document.getElementById('verificazioneForm').addEventListener('submit', (e) => this.handleVerificazione(e));
@@ -898,7 +907,8 @@
         const newPassword = document.getElementById('newPassword').value;
         const confirmNewPassword = document.getElementById('confirmNewPassword').value;
         const params = new URLSearchParams(window.location.search);
-        const token = params.get('reset_token');
+        const businessReset = params.get('business_reset_token');
+        const token = businessReset || params.get('reset_token');
 
         if (newPassword !== confirmNewPassword) {
           this.showAlert('resetPasswordAlert', 'Le due password non coincidono.', 'error');
@@ -906,7 +916,7 @@
         }
 
         try {
-          const res = await fetch(`${API_URL}/auth/reset-password`, {
+          const res = await fetch(`${API_URL}${businessReset ? '/business/reset-password' : '/auth/reset-password'}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, nuovaPassword: newPassword })
@@ -926,8 +936,25 @@
       showBusinessTab(tab) {
         document.getElementById('businessLoginForm').style.display = tab === 'login' ? 'block' : 'none';
         document.getElementById('businessRegisterForm').style.display = tab === 'register' ? 'block' : 'none';
+        document.getElementById('businessResetRequestForm').style.display = 'none';
         document.getElementById('businessTabLoginBtn').style.background = tab === 'login' ? '#234c3b' : '#56675e';
         document.getElementById('businessTabRegisterBtn').style.background = tab === 'register' ? '#234c3b' : '#56675e';
+      },
+
+      showBusinessReset() {
+        document.getElementById('businessLoginForm').style.display = 'none';
+        document.getElementById('businessRegisterForm').style.display = 'none';
+        document.getElementById('businessResetRequestForm').style.display = 'block';
+      },
+
+      async handleBusinessResetRequest(e) {
+        e.preventDefault();
+        try {
+          const res = await fetch(`${API_URL}/business/richiedi-reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('businessResetEmail').value }) });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showAlert('businessAlert', data.message, 'success');
+        } catch (err) { this.showAlert('businessAlert', err.message || 'Errore di connessione, riprova.', 'error'); }
       },
 
       async searchStrutturaPerBusiness() {
