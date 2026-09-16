@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node trustourant-backend.js",
     "dev": "node trustourant-backend.js",
+    "import:umbria": "node scripts/import-umbria-osm.js",
     "test": "node --test test/*.test.js",
     "postinstall": "node scripts/postinstall.js"
   },

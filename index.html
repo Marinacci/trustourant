@@ -1083,7 +1083,7 @@
 
           let html = '';
           if (strutture.length === 0) {
-            html = '<div style="text-align: center; padding: 40px; color: #56675e;"><h3>Nessuna struttura trovata</h3></div>';
+            html = '<div class="empty" role="status"><h3>Nessuna struttura trovata</h3><p>Prova con il nome dell’hotel, una città come Merano o una regione come Trentino-Alto Adige o Umbria.</p></div>';
           } else {
             html = '<div class="strutture-grid">';
             strutture.forEach(s => {
@@ -1573,6 +1573,7 @@
                   ${r.moderato === 1 ? '✓ Pubblicata' : '⏳ In moderazione'}
                 </div>
                 <div style="color: #4b5563; margin-top: 10px;">${app.esc(r.commento)}</div>
+                <button type="button" class="secondary" style="margin-top: 16px;" onclick="app.deleteMyReview(${Number(r.id)})" aria-label="Elimina la tua recensione">Elimina recensione</button>
               </div>
             `).join('');
           }
@@ -1580,6 +1581,22 @@
           document.getElementById('mieReviewList').innerHTML = html;
         } catch (err) {
           console.error(err);
+        }
+      },
+
+      async deleteMyReview(reviewId) {
+        if (!Number.isSafeInteger(Number(reviewId)) || !window.confirm('Vuoi eliminare definitivamente questa recensione? L’operazione non può essere annullata.')) return;
+        try {
+          const res = await fetch(`${API_URL}/reviews/${Number(reviewId)}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Non è stato possibile eliminare la recensione.');
+          this.showAlert('searchAlert', 'Recensione eliminata.', 'success');
+          this.loadMieReview();
+        } catch (err) {
+          this.showAlert('searchAlert', err.message || 'Non è stato possibile eliminare la recensione.', 'error');
         }
       },
 

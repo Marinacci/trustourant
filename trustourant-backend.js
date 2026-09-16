@@ -116,6 +116,10 @@ db.serialize(() => {
     bloccata INTEGER DEFAULT 0,
     vitto_alloggio TEXT,
     stagionalita TEXT,
+    latitudine REAL,
+    longitudine REAL,
+    fonte_dati TEXT,
+    importato_il DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
@@ -220,6 +224,10 @@ aggiungiColonnaSeManca('reviews', 'email_notificato', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('verificazioni', 'email_notificato', 'INTEGER DEFAULT 0');
 aggiungiColonnaSeManca('strutture', 'vitto_alloggio', 'TEXT');
 aggiungiColonnaSeManca('strutture', 'stagionalita', 'TEXT');
+aggiungiColonnaSeManca('strutture', 'latitudine', 'REAL');
+aggiungiColonnaSeManca('strutture', 'longitudine', 'REAL');
+aggiungiColonnaSeManca('strutture', 'fonte_dati', 'TEXT');
+aggiungiColonnaSeManca('strutture', 'importato_il', 'DATETIME');
 aggiungiColonnaSeManca('reviews', 'consiglio_direzione', 'TEXT');
 aggiungiColonnaSeManca('reviews', 'rifaresti', 'TEXT');
 aggiungiColonnaSeManca('reviews', 'colloquio_info', 'TEXT');
@@ -395,11 +403,12 @@ const verifyToken = (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'Accedi per continuare.' });
   jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, decoded) => {
     if (err || !Number.isSafeInteger(decoded?.userId) || decoded.userId < 1) return res.status(401).json({ error: 'Sessione non valida.' });
-    db.get('SELECT id, bannato, token_version FROM users WHERE id=?', [decoded.userId], (err, user) => {
+    db.get('SELECT id, bannato, token_version, is_admin FROM users WHERE id=?', [decoded.userId], (err, user) => {
       if (err) return res.status(500).json({ error: 'Servizio temporaneamente non disponibile.' });
       if (!user || (decoded.tokenVersion || 0) !== user.token_version) return res.status(401).json({ error: 'Sessione scaduta. Accedi di nuovo.' });
       if (user.bannato && !['/api/users/me', '/api/users/me/export'].includes(req.path)) return res.status(403).json({ error: 'Account bloccato.' });
       req.userId = user.id;
+      req.userIsAdmin = user.is_admin === 1;
       next();
     });
   });
@@ -515,40 +524,69 @@ app.post('/api/admin/verificazione/rifiuta/:verificazione_id', verifyToken, isAd
 
 // ============ STRUTTURE ============
 
+const normalizeSearchText = value => String(value || '')
+  .trim()
+  .toLocaleLowerCase('it-IT')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[-_/]+/g, ' ')
+  .replace(/\s+/g, ' ');
+
+const altoAdigeAliases = new Set([
+  'trentino alto adige',
+  'trentino alto adige sudtirol',
+  'alto adige',
+  'sudtirol'
+]);
+
+function addTextSearch(queryParts, params, columns, value) {
+  const term = normalizeSearchText(value);
+  if (!term) return;
+  const normalizedColumns = columns.map(column =>
+    `LOWER(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(${column}, ''), '-', ' '), '/', ' '), 'ü', 'u'), 'ä', 'a'))`
+  );
+  queryParts.push(`(${normalizedColumns.map(column => `${column} LIKE ?`).join(' OR ')})`);
+  normalizedColumns.forEach(() => params.push(`%${term}%`));
+}
+
+function addRegionSearch(queryParts, params, value) {
+  const term = normalizeSearchText(value);
+  if (!term) return;
+  if (altoAdigeAliases.has(term)) {
+    queryParts.push(`(${[
+      '%trentino-alto adige%',
+      '%trentino alto adige%',
+      '%alto adige%',
+      '%südtirol%',
+      '%sudtirol%'
+    ].map(() => 'LOWER(regione) LIKE ?').join(' OR ')})`);
+    params.push('%trentino-alto adige%', '%trentino alto adige%', '%alto adige%', '%südtirol%', '%sudtirol%');
+    return;
+  }
+  addTextSearch(queryParts, params, ['regione'], term);
+}
+
 app.get('/api/strutture', (req, res) => {
   const { nome, città, provincia, regione, tipo, rating_min } = req.query;
-  let query = 'SELECT * FROM strutture WHERE bloccata = 0';
+  const clauses = ['bloccata = 0'];
   const params = [];
 
-  if (nome) {
-    query += ' AND nome LIKE ?';
-    params.push(`%${nome}%`);
-  }
-  if (città) {
-    query += ' AND città LIKE ?';
-    params.push(`%${città}%`);
-  }
-  if (provincia) {
-    query += ' AND provincia = ?';
-    params.push(provincia);
-  }
-  if (regione) {
-    query += ' AND regione = ?';
-    params.push(regione);
-  }
-  if (tipo) {
-    query += ' AND tipo = ?';
-    params.push(tipo);
-  }
+  // Il campo principale accetta anche città e regione: chi cerca “Merano” o
+  // “Umbria” non deve sapere in quale filtro inserire il testo.
+  addTextSearch(clauses, params, ['nome', 'città', 'provincia', 'regione'], nome);
+  addTextSearch(clauses, params, ['città'], città);
+  addTextSearch(clauses, params, ['provincia'], provincia);
+  addRegionSearch(clauses, params, regione);
+  addTextSearch(clauses, params, ['tipo'], tipo);
   if (rating_min) {
-    query += ' AND rating >= ?';
+    clauses.push('rating >= ?');
     params.push(rating_min);
   }
 
-  query += ' ORDER BY nome ASC LIMIT 1000';
+  const query = `SELECT * FROM strutture WHERE ${clauses.join(' AND ')} ORDER BY nome ASC LIMIT 1000`;
 
   db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return res.status(500).json({ error: 'Ricerca strutture temporaneamente non disponibile.' });
     res.json(rows || []);
   });
 });
@@ -680,6 +718,29 @@ app.get('/api/my-reviews', verifyToken, (req, res) => {
   db.all('SELECT * FROM reviews WHERE user_id = ? ORDER BY created_at DESC', [req.userId], (err, reviews) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(reviews || []);
+  });
+});
+
+app.delete('/api/reviews/:review_id', verifyToken, (req, res) => {
+  const reviewId = Number(req.params.review_id);
+  if (!Number.isSafeInteger(reviewId) || reviewId < 1) return res.status(400).json({ error: 'Recensione non valida.' });
+  if (req.userIsAdmin) return res.status(403).json({ error: 'Usa le funzioni di moderazione amministrativa.' });
+
+  db.get('SELECT id, struttura_id FROM reviews WHERE id = ? AND user_id = ?', [reviewId, req.userId], (err, review) => {
+    if (err) return res.status(500).json({ error: 'Eliminazione temporaneamente non disponibile.' });
+    // 404 evita di rivelare a un utente l’esistenza di recensioni altrui.
+    if (!review) return res.status(404).json({ error: 'Recensione non trovata.' });
+
+    db.run('DELETE FROM reviews WHERE id = ? AND user_id = ?', [reviewId, req.userId], function(deleteErr) {
+      if (deleteErr || this.changes !== 1) return res.status(500).json({ error: 'Eliminazione temporaneamente non disponibile.' });
+      db.run(`UPDATE strutture
+        SET rating = COALESCE((SELECT AVG(rating_medio) FROM reviews WHERE struttura_id = ? AND moderato = 1 AND respinto = 0), 0),
+            num_reviews = (SELECT COUNT(*) FROM reviews WHERE struttura_id = ? AND moderato = 1 AND respinto = 0)
+        WHERE id = ?`, [review.struttura_id, review.struttura_id, review.struttura_id], updateErr => {
+        if (updateErr) return res.status(500).json({ error: 'Recensione eliminata, ma statistiche da aggiornare.' });
+        res.json({ message: 'Recensione eliminata.', id: reviewId });
+      });
+    });
   });
 });
 

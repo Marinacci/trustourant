@@ -41,6 +41,10 @@ test('Public pages contain the full jobs path and scripts parse correctly', () =
   assert.match(read('index.html'), /id="publicStructures"/);
   assert.match(read('public-home.js'), /api\/stats/);
   assert.doesNotMatch(read('index.html'), /#ec4899|#f59e0b|Fase 3|Fase 4/i);
+  assert.match(read('index.html'), /deleteMyReview/);
+  assert.match(read('index.html'), /Elimina recensione/);
+  assert.match(read('trustourant-backend.js'), /app\.delete\('\/api\/reviews\/:review_id'/);
+  assert.match(read('trustourant-backend.js'), /altoAdigeAliases/);
 });
 
 test('Business demo is interactive and never calls protected business endpoints', async () => {
