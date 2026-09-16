@@ -169,6 +169,17 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
     const account = await business(req);
     res.json(await all(`SELECT j.*, (SELECT COUNT(*) FROM job_applications a WHERE a.job_id=j.id) AS candidature FROM jobs j WHERE business_id=? ORDER BY j.id DESC`, [account.id]));
   }));
+  // Gives the logged-in company its own current status. This is intentionally
+  // available before recruiting verification, but never exposes other accounts.
+  app.get('/api/business/status', route(async (req, res) => {
+    const businessId = identity(req, 'businessId');
+    const row = await get(`SELECT b.id,b.struttura_id,b.verificato,b.metodo_verifica,s.nome AS struttura_nome
+      FROM business_accounts b JOIN strutture s ON s.id=b.struttura_id WHERE b.id=?`, [businessId]);
+    if (!row) throw failure(401, 'Sessione aziendale non valida. Accedi di nuovo.');
+    const recruitingEnabled = row.verificato === 1 && row.metodo_verifica === 'verifica_manuale_admin';
+    res.set('Cache-Control', 'no-store');
+    res.json({ struttura_nome: row.struttura_nome, verificato: recruitingEnabled, stato: recruitingEnabled ? 'verificato' : 'in_attesa' });
+  }));
   app.post('/api/business/jobs', route(async (req, res) => {
     const account = await business(req), b = req.body;
     const titolo = text(b.titolo, 3, 100, 'Ruolo'), descrizione = text(b.descrizione, 30, 6000, 'Descrizione');

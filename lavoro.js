@@ -147,6 +147,13 @@
     if (!token('business')) return login('business');
     const version = openPanel('I tuoi annunci', '<p>Caricamento…</p>');
     try {
+      const status = await request('/business/status', { type:'business' });
+      if (!status.verificato) {
+        if (version !== panelVersion) return;
+        $('panelTitle').textContent = 'Account aziendale in attesa di verifica';
+        $('panelContent').innerHTML = `<p class="notice"><strong>${escape(status.struttura_nome)}</strong> è collegato correttamente, ma non è ancora abilitato a pubblicare annunci.</p><p>Accedi con l’account amministratore di Trustourant, apri <strong>Richieste account aziendale</strong> e verifica proprio questa richiesta. Poi esci e rientra nell’account aziendale oppure premi di nuovo “Area aziende”.</p><p class="muted">La verifica protegge hotel e candidati da annunci pubblicati da persone non autorizzate.</p>`;
+        return;
+      }
       const rows = await request('/business/jobs', { type:'business' });
       if (version !== panelVersion) return;
       renderBusinessDashboard(rows, false);
