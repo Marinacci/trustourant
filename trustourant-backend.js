@@ -239,6 +239,8 @@ aggiungiColonnaSeManca('reviews', 'risposta_datore_nome', 'TEXT');
 aggiungiColonnaSeManca('reviews', 'risposta_datore_email', 'TEXT');
 aggiungiColonnaSeManca('users', 'reset_token', 'TEXT');
 aggiungiColonnaSeManca('users', 'reset_token_scadenza', 'DATETIME');
+aggiungiColonnaSeManca('business_accounts', 'reset_token', 'TEXT');
+aggiungiColonnaSeManca('business_accounts', 'reset_token_scadenza', 'DATETIME');
 const migrationsReady = Promise.all(migrationTasks);
 
 // Administrator privileges come only from the stored is_admin flag.
@@ -915,6 +917,40 @@ app.post('/api/business/login', loginLimiter, (req, res) => {
     res.json({
       token,
       business: { id: account.id, email: account.email, struttura_id: account.struttura_id, struttura_nome: account.struttura_nome, nome_referente: account.nome_referente, verificato: account.verificato === 1 }
+    });
+  });
+});
+
+// Stessa risposta per indirizzi presenti e assenti: non riveliamo quali aziende
+// hanno un account. Solo chi controlla la casella email può completare il reset.
+app.post('/api/business/richiedi-reset-password', loginLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!validEmail(email)) return res.status(400).json({ error: 'Email non valida.' });
+  const generic = { message: 'Se l’indirizzo è associato a un account aziendale, riceverai le istruzioni per reimpostare la password.' };
+  db.get('SELECT id,nome_referente FROM business_accounts WHERE email=?', [email], async (err, account) => {
+    if (err || !account) return res.json(generic);
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    db.run('UPDATE business_accounts SET reset_token=?,reset_token_scadenza=? WHERE id=?', [resetToken, expiry, account.id], async updateErr => {
+      if (updateErr) return res.status(500).json({ error: 'Servizio temporaneamente non disponibile.' });
+      const resetLink = `${FRONTEND_URL}?business_reset_token=${resetToken}#aziende`;
+      await sendEmail(email, 'Trustourant - Reimposta password aziendale', `<div style="font-family:sans-serif;max-width:500px;margin:auto"><h2 style="color:#234c3b">Trustourant</h2><p>Ciao ${escapeEmailHtml(account.nome_referente || '')},</p><p>Per scegliere una nuova password aziendale usa questo link entro un’ora:</p><p><a href="${resetLink}" style="display:inline-block;background:#234c3b;color:white;padding:12px 20px;border-radius:6px;text-decoration:none">Reimposta password aziendale</a></p><p>Se non sei stato tu, ignora questa email.</p></div>`);
+      res.json(generic);
+    });
+  });
+});
+
+app.post('/api/business/reset-password', loginLimiter, async (req, res) => {
+  const { token, nuovaPassword } = req.body;
+  if (!validText(token, 1, 128) || !validText(nuovaPassword, 8, 72) || Buffer.byteLength(nuovaPassword, 'utf8') > 72) return res.status(400).json({ error: 'Dati non validi.' });
+  db.get('SELECT id,reset_token_scadenza FROM business_accounts WHERE reset_token=?', [token], async (err, account) => {
+    if (err || !account) return res.status(400).json({ error: 'Link non valido o già utilizzato.' });
+    if (new Date(account.reset_token_scadenza) < new Date()) return res.status(400).json({ error: 'Link scaduto. Richiedi un nuovo link.' });
+    const password = await bcrypt.hash(nuovaPassword, 10);
+    db.run('UPDATE business_accounts SET password=?,reset_token=NULL,reset_token_scadenza=NULL WHERE id=? AND reset_token=?', [password, account.id, token], function(updateErr) {
+      if (updateErr) return res.status(500).json({ error: 'Servizio temporaneamente non disponibile.' });
+      if (!this.changes) return res.status(400).json({ error: 'Link già utilizzato.' });
+      res.json({ message: 'Password aziendale reimpostata. Ora puoi accedere.' });
     });
   });
 });
