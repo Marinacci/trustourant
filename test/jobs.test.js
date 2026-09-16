@@ -28,7 +28,8 @@ before(async()=>{
 });
 after(async()=>{await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>db.close(resolve));});
 test('Public jobs initially empty; missing and wrong-role authentication rejected',async()=>{
- assert.deepEqual((await request('/jobs')).data.jobs,[]);
+  assert.deepEqual((await request('/jobs')).data.jobs,[]);
+  assert.equal((await request('/business/status',{token:unverified})).data.verificato,false);
  assert.equal((await request('/business/jobs',{method:'POST',body:valid})).status,401);
  assert.equal((await request('/business/jobs',{token:worker,method:'POST',body:valid})).status,401);
  assert.equal((await request('/business/jobs',{token:unverified,method:'POST',body:valid})).status,403);
@@ -37,6 +38,7 @@ test('Salary and working conditions validated on server',async()=>{
  for(const body of [{...valid,salario_min:undefined},{...valid,salario_max:2000},{...valid,salario_tipo:'circa'},{...valid,ore_settimana:0},{...valid,giorni_settimana:7},{...valid,alloggio:'true'}])
   assert.equal((await request('/business/jobs',{token:business,method:'POST',body})).status,400);
  const result=await request('/business/jobs',{token:business,method:'POST',body:valid});assert.equal(result.status,201);jobId=result.data.id;
+ assert.equal((await request('/business/status',{token:business})).data.verificato,true);
 });
 test('Worker directory persists profiles, protects visibility and only verified businesses can search',async()=>{
  const professions=await request('/professions');assert.ok(professions.data.some(row=>row.slug==='pizzaiolo'));assert.ok(professions.data.some(row=>row.slug==='hausmeister'));assert.ok(professions.data.some(row=>row.slug==='massaggiatore'));
