@@ -104,6 +104,12 @@
       display: block;
     }
 
+    /* Schede principali: senza queste regole i pulsanti del menu cambiano stato
+       ma la sezione selezionata resta invisibile. */
+    .section-tab { display: none; }
+    .section-tab.active { display: block; animation: tab-enter .18s ease-out; }
+    @keyframes tab-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
     /* Auth */
     .auth-container {
       max-width: 500px;
@@ -442,11 +448,11 @@
       <div class="logo">Trustourant</div>
       <a href="lavoro.html" style="color: #183b2c; font-weight: 700; margin: 0 10px;">Trova lavoro</a>
       <nav id="mainNav">
-        <button class="nav-btn active" data-tab="ricerca">Ricerca</button>
-        <button class="nav-btn" data-tab="classifica">Classifica</button>
-        <button class="nav-btn" data-tab="statistiche">Statistiche</button>
-        <button class="nav-btn" data-tab="verificazione">Verificazione</button>
-        <button class="nav-btn" data-tab="mie-review">Le Mie Review</button>
+        <button class="nav-btn active" data-tab="ricerca" aria-selected="true">Ricerca</button>
+        <button class="nav-btn" data-tab="classifica" aria-selected="false">Classifica</button>
+        <button class="nav-btn" data-tab="statistiche" aria-selected="false">Statistiche</button>
+        <button class="nav-btn" data-tab="verificazione" aria-selected="false">Verificazione</button>
+        <button class="nav-btn" data-tab="mie-review" aria-selected="false">Le Mie Review</button>
       </nav>
       <div id="businessNav" class="user-info" style="display: none;">
         <span id="businessName" style="font-size: 13px;"></span>
@@ -656,8 +662,8 @@
 
       <!-- Classifica -->
       <div id="classificaTab" class="section-tab">
-        <h2 style="color: white; margin-bottom: 10px;">Classifica Strutture</h2>
-        <p style="color: #cbd5e1; margin-bottom: 20px; font-size: 14px;">Basata sulle recensioni pubblicate dai dipendenti. Solo strutture con almeno 3 recensioni.</p>
+        <h2 style="color: #23372e; margin-bottom: 10px;">Classifica Strutture</h2>
+        <p style="color: #56675e; margin-bottom: 20px; font-size: 14px;">Basata sulle recensioni pubblicate dai dipendenti. Solo strutture con almeno 3 recensioni.</p>
 
         <div style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap;">
           <button id="btnTopMigliori" class="submit-btn" style="width: auto; padding: 10px 20px;">🏆 Top 50 Migliori</button>
@@ -669,7 +675,7 @@
 
       <!-- Statistiche -->
       <div id="statisticheTab" class="section-tab">
-        <h2 style="color: white; margin-bottom: 20px;">Dashboard Statistiche</h2>
+        <h2 style="color: #23372e; margin-bottom: 20px;">Dashboard Statistiche</h2>
         
         <div class="stats-grid">
           <div class="stat-card">
@@ -826,18 +832,29 @@
         // Tabs
         document.querySelectorAll('#mainNav .nav-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
-            document.querySelectorAll('#mainNav .nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#mainNav .nav-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
             e.target.classList.add('active');
+            e.target.setAttribute('aria-selected', 'true');
             
             const tab = e.target.dataset.tab;
             document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(tab + 'Tab').classList.add('active');
+            const tabId = tab === 'mie-review' ? 'mieReviewTab' : tab + 'Tab';
+            const destination = document.getElementById(tabId);
+            if (!destination) return;
+            destination.classList.add('active');
+            document.getElementById('mainApp').scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 
             if (tab === 'statistiche') {
               setTimeout(() => this.loadStatistiche(), 300);
             }
             if (tab === 'classifica') {
               this.loadClassifica('migliori');
+            }
+            if (tab === 'verificazione') {
+              this.loadVerificazioneStatus();
+            }
+            if (tab === 'mie-review') {
+              this.loadMieReview();
             }
           });
         });
