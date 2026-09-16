@@ -8,6 +8,10 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
   const get = (sql, params = []) => new Promise((resolve, reject) => db.get(sql, params, (err, row) => err ? reject(err) : resolve(row)));
   const all = (sql, params = []) => new Promise((resolve, reject) => db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows)));
   const ready = (async () => {
+    const addColumn = async (table, column, definition) => {
+      try { await run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`); }
+      catch (err) { if (!String(err.message).includes('duplicate column name')) throw err; }
+    };
     // The worker directory is deliberately separate from credentials.  A profile is
     // created for every worker and remains available until the worker deletes the
     // account or turns off visibility.
@@ -32,9 +36,28 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY(profession_id) REFERENCES professions(id)
     )`);
+    await run(`CREATE TABLE IF NOT EXISTS worker_experiences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, struttura_nome TEXT NOT NULL,
+      ruolo TEXT NOT NULL, periodo_inizio TEXT, periodo_fine TEXT, verificata INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+    await run(`CREATE TABLE IF NOT EXISTS worker_preferences (
+      user_id INTEGER PRIMARY KEY, riceve_proposte INTEGER NOT NULL DEFAULT 1,
+      notifiche_match INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+    await run(`CREATE TABLE IF NOT EXISTS job_invitations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, job_id INTEGER NOT NULL, worker_id INTEGER NOT NULL,
+      business_id INTEGER NOT NULL, messaggio TEXT NOT NULL, stato TEXT NOT NULL DEFAULT 'inviato' CHECK(stato IN ('inviato','accettato','rifiutato')),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, responded_at TEXT,
+      UNIQUE(job_id,worker_id), FOREIGN KEY(job_id) REFERENCES jobs(id), FOREIGN KEY(worker_id) REFERENCES users(id), FOREIGN KEY(business_id) REFERENCES business_accounts(id)
+    )`);
+    await addColumn('worker_profiles', 'foto_url', 'TEXT');
+    await addColumn('worker_profiles', 'curriculum_url', 'TEXT');
+    await addColumn('worker_profiles', 'altro_ruolo', 'TEXT');
     await run(`CREATE TRIGGER IF NOT EXISTS create_worker_profile AFTER INSERT ON users
-      BEGIN INSERT OR IGNORE INTO worker_profiles(user_id) VALUES(NEW.id); END`);
+      BEGIN INSERT OR IGNORE INTO worker_profiles(user_id) VALUES(NEW.id); INSERT OR IGNORE INTO worker_preferences(user_id) VALUES(NEW.id); END`);
     await run(`INSERT OR IGNORE INTO worker_profiles(user_id) SELECT id FROM users`);
+    await run(`INSERT OR IGNORE INTO worker_preferences(user_id) SELECT id FROM users`);
     const professionRows = [
       ['executive-chef','Executive Chef','Cucina'],['chef-di-cucina','Chef di cucina','Cucina'],['sous-chef','Sous Chef / Secondo Chef','Cucina'],['chef-de-partie','Chef de Partie','Cucina'],['chef-tournant','Chef Tournant','Cucina'],['commis-cucina','Commis di cucina','Cucina'],['aiuto-cuoco','Aiuto cuoco','Cucina'],['cuoco','Cuoco','Cucina'],['pizzaiolo','Pizzaiolo','Cucina'],['fornaio','Fornaio','Cucina'],['panettiere','Panettiere','Pasticceria e panificazione'],['pastaio','Pastaio','Cucina'],['grillista','Grillista','Cucina'],['addetto-colazioni','Addetto colazioni','Sala e ristorazione'],['lavapiatti','Lavapiatti / Addetto lavaggio stoviglie','Cucina'],['steward-cucina','Steward di cucina','Cucina'],
       ['pasticcere','Pasticcere','Pasticceria e panificazione'],['capo-pasticcere','Capo pasticcere','Pasticceria e panificazione'],['commis-pasticceria','Commis pasticceria','Pasticceria e panificazione'],['gelatiere','Gelatiere','Pasticceria e panificazione'],['cioccolatiere','Cioccolatiere','Pasticceria e panificazione'],
@@ -42,6 +65,7 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
       ['direttore-hotel','Direttore d’hotel','Hotel e accoglienza'],['hotel-manager','Hotel Manager','Hotel e accoglienza'],['front-office-manager','Front Office Manager','Hotel e accoglienza'],['receptionist','Receptionist','Hotel e accoglienza'],['night-auditor','Night Auditor','Hotel e accoglienza'],['concierge','Concierge','Hotel e accoglienza'],['booking-agent','Booking agent','Hotel e accoglienza'],['revenue-manager','Revenue manager','Hotel e accoglienza'],['facchino','Facchino','Hotel e accoglienza'],
       ['governante','Governante','Housekeeping e manutenzione'],['cameriera-piani','Cameriera ai piani','Housekeeping e manutenzione'],['addetto-pulizie','Addetto pulizie','Housekeeping e manutenzione'],['lavanderia','Addetto lavanderia','Housekeeping e manutenzione'],['hausmeister','Hausmeister / Manutentore','Housekeeping e manutenzione'],['giardiniere','Giardiniere','Housekeeping e manutenzione'],['tecnico-manutentore','Tecnico manutentore','Housekeeping e manutenzione'],
       ['spa-manager','Spa manager','Benessere'],['massaggiatore','Massaggiatore / Massaggiatrice','Benessere'],['estetista','Estetista','Benessere'],['beauty-therapist','Beauty therapist','Benessere'],['personal-trainer','Personal trainer','Benessere'],['animatore','Animatore turistico','Altre figure'],['responsabile-eventi','Responsabile eventi','Altre figure']
+      ,['pizzaiolo-capo','Pizzaiolo capo partita','Cucina'],['gastronomo','Gastronomo','Cucina'],['addetto-buffet','Addetto buffet','Cucina'],['magazziniere-cucina','Magazziniere cucina','Cucina'],['decoratore-torte','Decoratore di torte','Pasticceria e panificazione'],['hostess-sala','Hostess / Steward di sala','Sala e ristorazione'],['cassiere','Cassiere','Sala e ristorazione'],['addetto-catering','Addetto catering','Sala e ristorazione'],['portiere-notturno','Portiere notturno','Hotel e accoglienza'],['addetto-prenotazioni','Addetto prenotazioni','Hotel e accoglienza'],['guest-relation','Guest relation','Hotel e accoglienza'],['autista-navetta','Autista / navetta','Hotel e accoglienza'],['housekeeping-supervisor','Housekeeping supervisor','Housekeeping e manutenzione'],['addetto-piscina-spa','Addetto piscina e spa','Housekeeping e manutenzione'],['istruttore-fitness','Istruttore fitness','Benessere'],['operatore-wellness','Operatore wellness','Benessere'],['addetto-miniclub','Addetto miniclub','Altre figure'],['addetto-eventi','Addetto eventi','Altre figure'],['fotografo-hospitality','Fotografo/videomaker per strutture','Altre figure'],['addetto-amministrazione','Addetto amministrazione','Altre figure'],['hr-selezione','HR / selezione personale','Altre figure'],['altra-hospitality','Altra professione hospitality','Altre figure']
     ];
     for (const row of professionRows) await run('INSERT OR IGNORE INTO professions(slug,nome,categoria) VALUES(?,?,?)', row);
     await run('CREATE INDEX IF NOT EXISTS worker_profiles_search_idx ON worker_profiles(visibile, regione, citta, disponibilita)');
@@ -219,7 +243,9 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
     const profile = await get(`SELECT p.*, pr.nome AS professione, pr.slug AS profession_slug FROM worker_profiles p LEFT JOIN professions pr ON pr.id=p.profession_id WHERE p.user_id=?`, [user.id]);
     const secondary = await all(`SELECT pr.id,pr.slug,pr.nome,pr.categoria FROM worker_professions wp JOIN professions pr ON pr.id=wp.profession_id WHERE wp.user_id=? ORDER BY pr.nome`, [user.id]);
     res.set('Cache-Control', 'no-store');
-    res.json({ profile, secondary_professions: secondary });
+    const preferences = await get('SELECT riceve_proposte,notifiche_match FROM worker_preferences WHERE user_id=?', [user.id]);
+    const esperienze = await all('SELECT id,struttura_nome,ruolo,periodo_inizio,periodo_fine,verificata FROM worker_experiences WHERE user_id=? ORDER BY id DESC', [user.id]);
+    res.json({ profile, secondary_professions: secondary, preferences, esperienze });
   }));
   app.put('/api/worker-profile', route(async (req, res) => {
     const user = await worker(req), b = req.body || {};
@@ -246,6 +272,24 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
     await run('UPDATE worker_profiles SET visibile=?,updated_at=CURRENT_TIMESTAMP WHERE user_id=?', [req.body.visibile ? 1 : 0, user.id]);
     res.json({ message: req.body.visibile ? 'Profilo visibile alle aziende verificate.' : 'Profilo nascosto dalle ricerche aziendali.' });
   }));
+  app.put('/api/worker-profile/preferences', route(async (req, res) => {
+    const user=await worker(req), b=req.body || {};
+    if (typeof b.riceve_proposte !== 'boolean' || typeof b.notifiche_match !== 'boolean') throw failure(400,'Preferenze non valide.');
+    await run('INSERT INTO worker_preferences(user_id,riceve_proposte,notifiche_match) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET riceve_proposte=excluded.riceve_proposte,notifiche_match=excluded.notifiche_match',[user.id,b.riceve_proposte?1:0,b.notifiche_match?1:0]);
+    res.json({message:'Preferenze aggiornate.'});
+  }));
+  app.post('/api/worker-profile/experiences', route(async (req,res) => {
+    const user=await worker(req), b=req.body || {};
+    const structure=text(b.struttura_nome,2,150,'Struttura'), role=text(b.ruolo,2,100,'Ruolo');
+    const start=optionalText(b.periodo_inizio,20,'Periodo inizio'), end=optionalText(b.periodo_fine,20,'Periodo fine');
+    const result=await run('INSERT INTO worker_experiences(user_id,struttura_nome,ruolo,periodo_inizio,periodo_fine) VALUES(?,?,?,?,?)',[user.id,structure,role,start,end]);
+    res.status(201).json({id:result.id,message:'Esperienza aggiunta. La verifica richiede conferma separata.'});
+  }));
+  app.delete('/api/worker-profile/experiences/:id', route(async (req,res) => {
+    const user=await worker(req); const id=integer(Number(req.params.id),1,100000000,'Esperienza');
+    const result=await run('DELETE FROM worker_experiences WHERE id=? AND user_id=?',[id,user.id]);
+    if(!result.changes) throw failure(404,'Esperienza non trovata.'); res.json({message:'Esperienza eliminata.'});
+  }));
   app.get('/api/business/workers', route(async (req, res) => {
     await business(req);
     const where = ['p.visibile=1','COALESCE(u.bannato,0)=0'], params = [];
@@ -258,6 +302,33 @@ module.exports = function installJobs(app, db, { jwt, secret }) {
     const rows=await all(`SELECT p.user_id,p.citta,p.provincia,p.regione,p.anni_esperienza,p.disponibilita,p.disponibile_dal,p.trasferimento,p.raggio_km,p.contratto,p.stipendio_desiderato,p.vitto_alloggio,p.lingue,p.competenze,p.presentazione,p.updated_at,pr.id AS profession_id,pr.nome AS professione FROM worker_profiles p JOIN users u ON u.id=p.user_id LEFT JOIN professions pr ON pr.id=p.profession_id WHERE ${filter} ORDER BY CASE p.disponibilita WHEN 'immediata' THEN 0 ELSE 1 END,p.anni_esperienza DESC,p.updated_at DESC LIMIT 20 OFFSET ?`,[...params,(page-1)*20]);
     // Deliberately no name, email, phone or CV in a directory search.
     res.json({workers:rows,total:count.total,page,page_size:20});
+  }));
+  app.post('/api/jobs/:id/invitations', route(async (req,res) => {
+    const account=await business(req), workerId=integer(Number(req.body?.worker_id),1,100000000,'Lavoratore');
+    const message=text(req.body?.messaggio,20,1500,'Messaggio');
+    const job=await get('SELECT id FROM jobs WHERE id=? AND business_id=? AND stato=\'aperto\'',[req.params.id,account.id]);
+    if(!job) throw failure(404,'Annuncio non disponibile.');
+    const target=await get('SELECT p.user_id FROM worker_profiles p JOIN worker_preferences w ON w.user_id=p.user_id JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND p.visibile=1 AND w.riceve_proposte=1 AND COALESCE(u.bannato,0)=0',[workerId]);
+    if(!target) throw failure(404,'Profilo non disponibile per proposte.');
+    try { await run('INSERT INTO job_invitations(job_id,worker_id,business_id,messaggio) VALUES(?,?,?,?)',[job.id,workerId,account.id,message]); }
+    catch(err){if(err.code==='SQLITE_CONSTRAINT') throw failure(409,'Hai già inviato una proposta per questo annuncio.');throw err;}
+    res.status(201).json({message:'Proposta inviata tramite Trustourant.'});
+  }));
+  app.get('/api/worker/matches', route(async (req,res) => {
+    const user=await worker(req); const profile=await get('SELECT * FROM worker_profiles WHERE user_id=?',[user.id]);
+    if(!profile) return res.json({matches:[],invitations:[]});
+    const roles=await all('SELECT pr.nome FROM professions pr JOIN worker_professions wp ON wp.profession_id=pr.id WHERE wp.user_id=? UNION SELECT nome FROM professions WHERE id=?',[user.id,profile.profession_id || -1]);
+    const terms=roles.map(row=>String(row.nome).toLowerCase()).filter(Boolean);
+    const rows=await all(`SELECT ${fields} ${joins} WHERE ${visible} ORDER BY j.created_at DESC LIMIT 100`);
+    const matches=rows.map(job=>{let score=0;if(terms.some(role=>String(job.titolo).toLowerCase().includes(role)))score+=45;if(profile.disponibilita==='immediata')score+=20;if(!profile.stipendio_desiderato||profile.stipendio_desiderato<=job.salario_max)score+=20;if(profile.vitto_alloggio&&job.alloggio)score+=10;if(!profile.contratto||profile.contratto===job.contratto)score+=5;return {...job,score,compatibilita:score>=65?'alta':score>=35?'media':'bassa'};}).filter(row=>row.score>=35);
+    const invitations=await all(`SELECT i.id,i.messaggio,i.stato,i.created_at,j.titolo,s.nome AS struttura_nome FROM job_invitations i JOIN jobs j ON j.id=i.job_id JOIN business_accounts b ON b.id=i.business_id JOIN strutture s ON s.id=b.struttura_id WHERE i.worker_id=? ORDER BY i.id DESC`,[user.id]);
+    res.json({matches,invitations});
+  }));
+  app.post('/api/invitations/:id/respond', route(async(req,res)=>{
+    const user=await worker(req), id=integer(Number(req.params.id),1,100000000,'Proposta');
+    if(!['accettato','rifiutato'].includes(req.body?.stato)) throw failure(400,'Risposta non valida.');
+    const result=await run("UPDATE job_invitations SET stato=?,responded_at=CURRENT_TIMESTAMP WHERE id=? AND worker_id=? AND stato='inviato'",[req.body.stato,id,user.id]);
+    if(!result.changes) throw failure(404,'Proposta non disponibile.'); res.json({message:req.body.stato==='accettato'?'Proposta accettata.':'Proposta rifiutata.'});
   }));
   app.get('/api/business/jobs/:id/matches', route(async (req, res) => {
     const account=await business(req); const job=await get('SELECT * FROM jobs WHERE id=? AND business_id=?',[req.params.id,account.id]);
