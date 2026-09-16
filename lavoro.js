@@ -134,6 +134,15 @@
       $('workerSearchForm').onsubmit=event=>{event.preventDefault();search();};search();
     }catch(err){if(version===panelVersion){$('panelContent').innerHTML='';panelError(err);}}
   }
+  async function workerMatches() {
+    if (!token('worker')) return login('worker');
+    const version=openPanel('I miei match e proposte', '<p>Caricamento…</p>');
+    try {
+      const data=await request('/worker/matches',{type:'worker'}); if(version!==panelVersion)return;
+      const invitations=data.invitations || [], matches=data.matches || [];
+      $('panelContent').innerHTML=`<p class="notice">Questi suggerimenti derivano da professione, disponibilità, contratto, stipendio e alloggio. Non usiamo caratteristiche personali sensibili.</p><h3>Proposte ricevute</h3>${invitations.length?invitations.map(row=>`<article class="entry"><h3>${escape(row.titolo)} · ${escape(row.struttura_nome)}</h3><p class="description">${escape(row.messaggio)}</p><p class="muted">Stato: ${escape(row.stato)}</p>${row.stato==='inviato'?`<div class="actions"><button data-invite-accept="${row.id}">Accetta proposta</button><button class="secondary" data-invite-reject="${row.id}">Rifiuta</button></div>`:''}</article>`).join(''):'<p>Nessuna proposta diretta per ora.</p>'}<h3>Annunci compatibili</h3>${matches.length?matches.map(row=>`<article class="entry"><h3>${escape(row.titolo)} · ${escape(row.struttura_nome)}</h3><p><span class="tag">Compatibilità ${escape(row.compatibilita)}</span> · ${escape(row.citta)}</p><p class="salary">€ ${money(row.salario_min)}–${money(row.salario_max)} <small>${escape(row.salario_tipo)} / mese</small></p></article>`).join(''):'<p>Completa professione, disponibilità e preferenze nel tuo profilo per ricevere annunci più pertinenti.</p>'}`;
+    }catch(err){if(version===panelVersion){$('panelContent').innerHTML='';panelError(err);}}
+  }
   async function businessArea() {
     if (!token('business')) return login('business');
     const version = openPanel('I tuoi annunci', '<p>Caricamento…</p>');
@@ -205,10 +214,15 @@
         if (withdraw) await applications(); else { await businessArea(); search(); }
       } catch (err) { panelError(err); button.disabled=false; }
     }
+    if (button.dataset.inviteAccept || button.dataset.inviteReject) {
+      const id=button.dataset.inviteAccept || button.dataset.inviteReject; button.disabled=true;
+      try { await request(`/invitations/${id}/respond`,{type:'worker',method:'POST',body:{stato:button.dataset.inviteAccept?'accettato':'rifiutato'}});workerMatches(); }
+      catch(err){panelError(err);button.disabled=false;}
+    }
   });
   $('searchForm').onsubmit=event => {event.preventDefault();page=1;search();};
   $('previousPage').onclick=()=>{page--;search();}; $('nextPage').onclick=()=>{page++;search();};
-  $('workerProfile').onclick=workerProfile; $('myApplications').onclick=applications; $('demoBusiness').onclick=() => demoBusinessArea(); $('businessArea').onclick=businessArea; $('openPublish').onclick=businessArea;
+  $('workerProfile').onclick=workerProfile; $('myMatches').onclick=workerMatches; $('myApplications').onclick=applications; $('demoBusiness').onclick=() => demoBusinessArea(); $('businessArea').onclick=businessArea; $('openPublish').onclick=businessArea;
   $('closePanel').onclick=()=>$('panel').close(); $('panel').addEventListener('close',()=>{panelVersion++;});
   search(); const params=new URLSearchParams(location.search), id=params.get('annuncio'); if (id && /^\d+$/.test(id)) showJob(id); else if (params.get('demo') === 'azienda') demoBusinessArea(); else if (params.get('area') === 'azienda') businessArea();
 })();

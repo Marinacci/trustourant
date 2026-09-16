@@ -51,6 +51,10 @@ test('Worker directory persists profiles, protects visibility and only verified 
  assert.equal((await request('/business/workers?profession_id='+chef.id,{token:business})).data.total,0);
  assert.equal((await request('/worker-profile/visibility',{token:otherWorker,method:'PUT',body:{visibile:true}})).status,200);
  assert.equal((await request('/worker-profile/visibility',{token:worker,method:'PUT',body:{visibile:true}})).status,200);
+ assert.equal((await request(`/jobs/${jobId}/invitations`,{token:business,method:'POST',body:{worker_id:1,messaggio:'Vorremmo sentirti per un colloquio nel nostro hotel.'}})).status,201);
+ const workerMatches=await request('/worker/matches',{token:worker});assert.ok(workerMatches.data.matches.some(row=>row.id===jobId));assert.equal(workerMatches.data.invitations.length,1);
+ assert.equal((await request(`/invitations/${workerMatches.data.invitations[0].id}/respond`,{token:otherWorker,method:'POST',body:{stato:'accettato'}})).status,404);
+ assert.equal((await request(`/invitations/${workerMatches.data.invitations[0].id}/respond`,{token:worker,method:'POST',body:{stato:'accettato'}})).status,200);
 });
 test('Filters preserve net/gross meaning, pagination, literal search and no contact leak',async()=>{
  let result=await request('/jobs?q=chef&luogo=Merano&salario_min=2500&salario_tipo=netto&alloggio=1');assert.equal(result.data.total,1);assert.equal(result.data.jobs[0].struttura_nome,'Hotel Uno');assert.ok(!JSON.stringify(result.data).includes('@'));
