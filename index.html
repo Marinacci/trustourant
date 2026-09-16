@@ -450,9 +450,10 @@
       </nav>
       <div id="businessNav" class="user-info" style="display: none;">
         <span id="businessName" style="font-size: 13px;"></span>
+        <button id="openBusinessAreaBtn" style="font-size: 12px;">Apri area azienda</button>
         <button id="businessLogoutBtn" style="font-size: 12px;">Esci (azienda)</button>
       </div>
-      <button onclick="app.showSection('businessClaim')" style="background: none; border: 1px solid #234c3b; color: #234c3b; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 10px;">Area aziende</button>
+      <button id="businessEntryBtn" onclick="app.openBusinessEntry()" style="background: none; border: 1px solid #234c3b; color: #234c3b; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 10px;">Entra azienda</button>
       <div id="userNav" class="user-info" style="display: none;">
         <span id="userName"></span>
         <span id="badgeVerificato" class="badge-verificato" style="display: none;">✓ Verificato</span>
@@ -807,6 +808,7 @@
         document.querySelectorAll('#authNav .nav-btn')[1].addEventListener('click', () => this.showSection('register'));
         document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
         document.getElementById('businessLogoutBtn')?.addEventListener('click', () => this.businessLogout());
+        document.getElementById('openBusinessAreaBtn')?.addEventListener('click', () => this.openBusinessArea());
 
         // Forms
         document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
@@ -866,9 +868,20 @@
         if (this.businessToken && this.business) {
           document.getElementById('businessNav').style.display = 'flex';
           document.getElementById('businessName').textContent = `🏢 ${this.business.struttura_nome}${this.business.verificato ? ' ✓' : ' (in attesa di verifica)'}`;
+          document.getElementById('businessEntryBtn').textContent = 'Apri area azienda';
         } else {
           document.getElementById('businessNav').style.display = 'none';
+          document.getElementById('businessEntryBtn').textContent = 'Entra azienda';
         }
+      },
+
+      openBusinessEntry() {
+        if (this.businessToken && this.business) return this.openBusinessArea();
+        this.showSection('businessClaim');
+      },
+
+      openBusinessArea() {
+        window.location.assign('lavoro.html?area=azienda');
       },
 
       businessLogout() {
