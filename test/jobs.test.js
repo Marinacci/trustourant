@@ -38,6 +38,20 @@ test('Salary and working conditions validated on server',async()=>{
   assert.equal((await request('/business/jobs',{token:business,method:'POST',body})).status,400);
  const result=await request('/business/jobs',{token:business,method:'POST',body:valid});assert.equal(result.status,201);jobId=result.data.id;
 });
+test('Worker directory persists profiles, protects visibility and only verified businesses can search',async()=>{
+ const professions=await request('/professions');assert.ok(professions.data.some(row=>row.slug==='pizzaiolo'));assert.ok(professions.data.some(row=>row.slug==='hausmeister'));assert.ok(professions.data.some(row=>row.slug==='massaggiatore'));
+ const chef=professions.data.find(row=>row.slug==='sous-chef'), pizza=professions.data.find(row=>row.slug==='pizzaiolo');
+ const initial=await request('/worker-profile',{token:worker});assert.equal(initial.status,200);assert.equal(initial.data.profile.user_id,1);
+ const update=await request('/worker-profile',{token:worker,method:'PUT',body:{profession_id:chef.id,secondary_profession_ids:[pizza.id],citta:'Merano',provincia:'BZ',regione:'Trentino-Alto Adige',anni_esperienza:10,disponibilita:'immediata',trasferimento:false,raggio_km:30,contratto:'indeterminato',stipendio_desiderato:3200,vitto_alloggio:true,lingue:'Italiano, tedesco',competenze:'HACCP e cucina gourmet',presentazione:'Profilo di prova',visibile:true}});
+ assert.equal(update.status,200);
+ assert.equal((await request('/business/workers?profession_id='+chef.id,{token:unverified})).status,403);
+ const found=await request('/business/workers?profession_id='+chef.id+'&citta=Merano&disponibilita=immediata',{token:business});assert.equal(found.status,200);assert.equal(found.data.total,1);assert.ok(!JSON.stringify(found.data).includes('@'));
+ const matches=await request(`/business/jobs/${jobId}/matches`,{token:business});assert.equal(matches.status,200);assert.equal(matches.data[0].compatibilita,'alta');
+ assert.equal((await request('/worker-profile/visibility',{token:worker,method:'PUT',body:{visibile:false}})).status,200);
+ assert.equal((await request('/business/workers?profession_id='+chef.id,{token:business})).data.total,0);
+ assert.equal((await request('/worker-profile/visibility',{token:otherWorker,method:'PUT',body:{visibile:true}})).status,200);
+ assert.equal((await request('/worker-profile/visibility',{token:worker,method:'PUT',body:{visibile:true}})).status,200);
+});
 test('Filters preserve net/gross meaning, pagination, literal search and no contact leak',async()=>{
  let result=await request('/jobs?q=chef&luogo=Merano&salario_min=2500&salario_tipo=netto&alloggio=1');assert.equal(result.data.total,1);assert.equal(result.data.jobs[0].struttura_nome,'Hotel Uno');assert.ok(!JSON.stringify(result.data).includes('@'));
  assert.equal((await request('/jobs?salario_min=2500&salario_tipo=lordo')).data.total,0);
